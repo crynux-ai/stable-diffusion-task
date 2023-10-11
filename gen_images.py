@@ -98,7 +98,7 @@ def get_pipeline_call_args(pipeline, args: GenImageArgs):
     add_prompt_pipeline_call_args(call_args, pipeline, args)
 
     if args.controlnet is not None:
-        add_controlnet_pipeline_call_args(call_args, args.controlnet)
+        add_controlnet_pipeline_call_args(call_args, args)
 
     if args.refiner is not None:
         call_args["output_type"] = "latent"

@@ -1,4 +1,4 @@
-from controlnet_args import ControlnetArgs, PreprocessArgs
+from controlnet_args import ControlnetArgs, PreprocessArgs, CannyArgs
 from diffusers.utils import make_image_grid
 from config import load_config
 from PIL import Image
@@ -8,7 +8,7 @@ from gen_image_args import GenImageArgs, LoraArgs, TaskConfig, RefinerArgs
 from gen_images import gen_images
 
 prompt = ("best quality, ultra high res, photorealistic++++, 1girl, off-shoulder sweate, smiling, "
-          "faded ash gray messy bun hair+, border light, depth of field, large breasts++, looking at "
+          "faded ash gray messy bun hair+, border light, depth of field, looking at "
           "viewer, closeup")
 
 negative_prompt = ("paintings, sketches, worst quality+++++, low quality+++++, normal quality+++++, lowres, "
@@ -114,7 +114,11 @@ def gen_image_sd15_lora_controlnet():
             model="lllyasviel/sd-controlnet-canny",
             image_dataurl=ref_image_dataurl,
             preprocess=PreprocessArgs(
-                method="canny"
+                method="canny",
+                args=CannyArgs(
+                    low_threshold=50,
+                    high_threshold=100
+                )
             )
         ),
         safety_checker=False
@@ -478,15 +482,15 @@ def mismatch_sdxl_base_controlnet():
 
 if __name__ == "__main__":
     load_config()
-    gen_image_sd15_original()
-    gen_image_sd15_chilloutmix()
+    # gen_image_sd15_original()
+    # gen_image_sd15_chilloutmix()
     # gen_image_sd15_lora()
     # gen_image_sd15_lora_vae()
-    # gen_image_sd15_lora_controlnet()
-    gen_image_sdxl()
-    gen_image_sdxl_refiner()
-    gen_image_sdxl_controlnet()
-    gen_image_sdxl_controlnet_refiner()
+    gen_image_sd15_lora_controlnet()
+    # gen_image_sdxl()
+    # gen_image_sdxl_refiner()
+    # gen_image_sdxl_controlnet()
+    # gen_image_sdxl_controlnet_refiner()
     # gen_image_sdxl_lora()
     # gen_image_sdxl_lora_refiner()
     # gen_image_sdxl_lora_controlnet()
