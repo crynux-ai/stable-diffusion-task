@@ -2,6 +2,7 @@
 
 A general framework to define and execute the Stable Diffusion task.
 
+
 ### Features
 
 * Same task definition to run Stable Diffusion 1.5, 2.1 and Stable Diffusion XL tasks
@@ -9,6 +10,9 @@ A general framework to define and execute the Stable Diffusion task.
 * Controlnet and various preprocessing methods
 * LoRA
 * VAE
+* Long prompt
+* Prompt weighting using [Compel](https://github.com/damian0815/compel)
+
 
 ### Get started
 
