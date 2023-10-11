@@ -32,3 +32,4 @@ class GenImageArgs(BaseModel):
     controlnet: ControlnetArgs | None = None
     vae: str = ""
     refiner: RefinerArgs | None = None
+    textual_inversion: str = ""

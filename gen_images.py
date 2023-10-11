@@ -69,6 +69,9 @@ def prepare_pipeline(args: GenImageArgs):
             local_files_only=True
         )
 
+    if args.textual_inversion != "":
+        pipeline.load_textual_invertion(args.textual_inversion)
+
     pipeline = pipeline.to("cuda")
 
     # Refiner pipeline
