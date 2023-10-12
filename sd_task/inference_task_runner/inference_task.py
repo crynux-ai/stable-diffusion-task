@@ -12,7 +12,6 @@ from sd_task import config
 from sd_task.inference_task_args.task_args import InferenceTaskArgs
 
 from .controlnet import add_controlnet_pipeline_call_args
-from .errors import TaskNotRunnable, UnknownTaskError
 from .prompt import (add_prompt_pipeline_call_args,
                      add_prompt_refiner_sdxl_call_args)
 
@@ -122,42 +121,34 @@ def get_pipeline_call_args(pipeline, args: InferenceTaskArgs):
 
 
 def run_task(args: InferenceTaskArgs) -> List[Image.Image]:
-    try:
-        pipeline, refiner = prepare_pipeline(args)
+    pipeline, refiner = prepare_pipeline(args)
 
-        generated_images = []
+    generated_images = []
 
-        call_args = get_pipeline_call_args(pipeline, args)
-        refiner_call_args = {}
+    call_args = get_pipeline_call_args(pipeline, args)
+    refiner_call_args = {}
+
+    if refiner is not None:
+        add_prompt_refiner_sdxl_call_args(refiner_call_args, refiner, args)
+        refiner_call_args["num_inference_steps"] = math.ceil(args.refiner.steps)
+
+        # denoising_end is not supported by StableDiffusionXLControlNetPipeline yet.
+        if args.controlnet is None:
+            refiner_call_args["denoising_start"] = args.refiner.denoising_cutoff
+
+    for i in range(args.task_config.num_images):
+        current_seed = args.task_config.seed + i * 3000
+
+        # generator on CPU for reproducibility
+        call_args["generator"] = torch.manual_seed(current_seed)
+
+        image = pipeline(**call_args)
 
         if refiner is not None:
-            add_prompt_refiner_sdxl_call_args(refiner_call_args, refiner, args)
-            refiner_call_args["num_inference_steps"] = math.ceil(args.refiner.steps)
+            refiner_call_args["image"] = image.images
+            refiner_call_args["generator"] = torch.manual_seed(current_seed)
+            image = refiner(**refiner_call_args)
 
-            # denoising_end is not supported by StableDiffusionXLControlNetPipeline yet.
-            if args.controlnet is None:
-                refiner_call_args["denoising_start"] = args.refiner.denoising_cutoff
+        generated_images.append(image.images[0])
 
-        for i in range(args.task_config.num_images):
-            current_seed = args.task_config.seed + i * 3000
-
-            # generator on CPU for reproducibility
-            call_args["generator"] = torch.manual_seed(current_seed)
-
-            image = pipeline(**call_args)
-
-            if refiner is not None:
-                refiner_call_args["image"] = image.images
-                refiner_call_args["generator"] = torch.manual_seed(current_seed)
-                image = refiner(**refiner_call_args)
-
-            generated_images.append(image.images[0])
-
-        return generated_images
-    except (TypeError, ValueError, AttributeError, RuntimeError) as e:
-        raise TaskNotRunnable from e
-    except EnvironmentError as e:
-        # Usually model files not found
-        raise UnknownTaskError from e
-    except Exception as e:
-        raise UnknownTaskError from e
+    return generated_images

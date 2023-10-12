@@ -19,8 +19,7 @@ if __name__ == '__main__':
         "task_config": {
             "num_images": 9,
             "safety_checker": False
-        },
-        "safety_checker": False
+        }
     }
 
     run_task(InferenceTaskArgs.model_validate(args))
