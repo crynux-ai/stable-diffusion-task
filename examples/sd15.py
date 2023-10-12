@@ -1,6 +1,9 @@
 from sd_task.inference_task_runner.inference_task import run_task
+from sd_task.inference_task_args.task_args import InferenceTaskArgs
+from sd_task.config import load_config
 
 if __name__ == '__main__':
+    load_config()
     prompt = ("best quality, ultra high res, photorealistic++++, 1girl, off-shoulder sweate, smiling, "
               "faded ash gray messy bun hair+, border light, depth of field, looking at "
               "viewer, closeup")
@@ -20,4 +23,4 @@ if __name__ == '__main__':
         "safety_checker": False
     }
 
-    run_task(**args)
+    run_task(InferenceTaskArgs.model_validate(args))

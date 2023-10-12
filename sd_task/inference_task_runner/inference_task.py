@@ -1,16 +1,20 @@
-from diffusers import (AutoPipelineForText2Image,
-                       DiffusionPipeline,
-                       DPMSolverMultistepScheduler,
-                       ControlNetModel,
-                       AutoencoderKL)
-import torch
-import os
 import math
-import config
-from inference_task_runner.controlnet import add_controlnet_pipeline_call_args
-from inference_task_runner.prompt import add_prompt_pipeline_call_args, add_prompt_refiner_sdxl_call_args
-from inference_task_args.task_args import InferenceTaskArgs
-from inference_task_runner.errors import process_task_exception, process_task_not_runnable_error
+import os
+from typing import List
+
+import torch
+from diffusers import (AutoencoderKL, AutoPipelineForText2Image,
+                       ControlNetModel, DiffusionPipeline,
+                       DPMSolverMultistepScheduler)
+from PIL import Image
+
+from sd_task import config
+from sd_task.inference_task_args.task_args import InferenceTaskArgs
+
+from .controlnet import add_controlnet_pipeline_call_args
+from .errors import TaskNotRunnable, UnknownTaskError
+from .prompt import (add_prompt_pipeline_call_args,
+                     add_prompt_refiner_sdxl_call_args)
 
 # Use deterministic algorithms for reproducibility
 os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":16:8"
@@ -19,12 +23,11 @@ torch.use_deterministic_algorithms(True)
 
 
 def get_pipeline_init_args(args: InferenceTaskArgs = None):
-
     init_args = {
         "torch_dtype": torch.float16,
         "variant": "fp16",
         "local_files_only": True,
-        "cache_dir": config.config["data_dir"]["models"]["huggingface"]
+        "cache_dir": config.config["data_dir"]["models"]["huggingface"],
     }
 
     if args is not None and args.task_config.safety_checker is False:
@@ -41,12 +44,14 @@ def prepare_pipeline(args: InferenceTaskArgs):
             args.controlnet.model,
             torch_dtype=torch.float16,
             local_files_only=True,
-            cache_dir=config.config["data_dir"]["models"]["huggingface"]
+            cache_dir=config.config["data_dir"]["models"]["huggingface"],
         )
 
         pipeline_args["controlnet"] = controlnet_model
 
-    pipeline = AutoPipelineForText2Image.from_pretrained(args.base_model, **pipeline_args)
+    pipeline = AutoPipelineForText2Image.from_pretrained(
+        args.base_model, **pipeline_args
+    )
 
     # Faster scheduler from the huggingface doc, requires only ~20-25 steps
     pipeline.scheduler = DPMSolverMultistepScheduler.from_config(
@@ -58,7 +63,7 @@ def prepare_pipeline(args: InferenceTaskArgs):
             args.vae,
             torch_dtype=torch.float16,
             local_files_only=True,
-            cache_dir=config.config["data_dir"]["models"]["huggingface"]
+            cache_dir=config.config["data_dir"]["models"]["huggingface"],
         ).to("cuda")
 
     if args.lora is not None:
@@ -66,14 +71,14 @@ def prepare_pipeline(args: InferenceTaskArgs):
         pipeline.load_lora_weights(
             os.path.join(config.config["data_dir"]["models"]["lora"], args.lora.model),
             lora_scale=args.lora.weight,
-            local_files_only=True
+            local_files_only=True,
         )
 
     if args.textual_inversion != "":
         pipeline.load_textual_invertion(
             args.textual_inversion,
             local_files_only=True,
-            cache_dir=config.config["data_dir"]["models"]["huggingface"]
+            cache_dir=config.config["data_dir"]["models"]["huggingface"],
         )
 
     pipeline = pipeline.to("cuda")
@@ -86,7 +91,9 @@ def prepare_pipeline(args: InferenceTaskArgs):
         refiner_init_args["tokenizer_2"] = pipeline.tokenizer_2
         refiner_init_args["text_encoder_2"] = pipeline.text_encoder_2
         refiner_init_args["vae"] = pipeline.vae
-        refiner = DiffusionPipeline.from_pretrained(args.refiner.model, **refiner_init_args).to("cuda")
+        refiner = DiffusionPipeline.from_pretrained(
+            args.refiner.model, **refiner_init_args
+        ).to("cuda")
 
     return pipeline, refiner
 
@@ -96,7 +103,7 @@ def get_pipeline_call_args(pipeline, args: InferenceTaskArgs):
         "num_inference_steps": args.task_config.steps,
         "width": args.task_config.image_width,
         "height": args.task_config.image_height,
-        "guidance_scale": args.task_config.cfg
+        "guidance_scale": args.task_config.cfg,
     }
 
     add_prompt_pipeline_call_args(call_args, pipeline, args)
@@ -114,7 +121,7 @@ def get_pipeline_call_args(pipeline, args: InferenceTaskArgs):
     return call_args
 
 
-def run_task(args: InferenceTaskArgs):
+def run_task(args: InferenceTaskArgs) -> List[Image.Image]:
     try:
         pipeline, refiner = prepare_pipeline(args)
 
@@ -147,16 +154,10 @@ def run_task(args: InferenceTaskArgs):
             generated_images.append(image.images[0])
 
         return generated_images
-    except TypeError as te:
-        process_task_not_runnable_error(te)
-    except ValueError as ve:
-        process_task_not_runnable_error(ve)
-    except AttributeError as ae:
-        process_task_not_runnable_error(ae)
-    except RuntimeError as re:
-        process_task_not_runnable_error(re)
-    except EnvironmentError as ee:
+    except (TypeError, ValueError, AttributeError, RuntimeError) as e:
+        raise TaskNotRunnable from e
+    except EnvironmentError as e:
         # Usually model files not found
-        process_task_exception(ee)
-    except Exception as exception:
-        process_task_exception(exception)
+        raise UnknownTaskError from e
+    except Exception as e:
+        raise UnknownTaskError from e

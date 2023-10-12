@@ -1,11 +1,10 @@
-import os
 import torch
 from diffusers import (
     DiffusionPipeline,
     AutoencoderKL,
     ControlNetModel,
 )
-import config
+import sd_task.config as config
 
 
 def get_pretrained_args(model_config):

@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sd_task"
+authors = [{ name = "lukew", email = "lukew@crynux.ai" }]
+description = "A general framework to define and execute the Stable Diffusion task."
+readme = "README.md"
+requires-python = ">=3.7"
+classifiers = [
+    "Programming Language :: Python :: 3",
+]
+version = "0.0.1"
+
+[tool.setuptools.packages.find]
+include = ["sd_task"]
