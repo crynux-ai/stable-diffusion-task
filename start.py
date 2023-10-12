@@ -1,11 +1,16 @@
-from inference_task_args.controlnet_args import ControlnetArgs, PreprocessMethodCanny, CannyArgs
-from diffusers.utils import make_image_grid
-from config import load_config
-from PIL import Image
-import io
 import base64
-from inference_task_args.task_args import InferenceTaskArgs, LoraArgs, TaskConfig, RefinerArgs
-from inference_task_runner.inference_task import run_task
+import io
+
+from diffusers.utils import make_image_grid
+from PIL import Image
+
+from sd_task.config import load_config
+from sd_task.inference_task_args.controlnet_args import (CannyArgs,
+                                                         ControlnetArgs,
+                                                         PreprocessMethodCanny)
+from sd_task.inference_task_args.task_args import (InferenceTaskArgs, LoraArgs,
+                                                   RefinerArgs, TaskConfig)
+from sd_task.inference_task_runner.inference_task import run_task
 
 prompt = ("best quality, ultra high res, photorealistic++++, 1girl, off-shoulder sweate, smiling, "
           "faded ash gray messy bun hair+, border light, depth of field, looking at "
@@ -29,7 +34,6 @@ def gen_image_sd15_original():
         prompt=prompt,
         negative_prompt=negative_prompt,
         task_config=TaskConfig(num_images=9, safety_checker=False),
-        safety_checker=False
     )
 
     # Generate images
@@ -46,7 +50,6 @@ def gen_image_sd15_chilloutmix():
         prompt=prompt,
         negative_prompt=negative_prompt,
         task_config=TaskConfig(num_images=9, safety_checker=False),
-        safety_checker=False
     )
 
     # Generate images
@@ -66,7 +69,6 @@ def gen_image_sd15_lora():
         lora=LoraArgs(
             model="korean-doll-likeness-v2-0"
         ),
-        safety_checker=False
     )
 
     # Generate images
@@ -87,7 +89,6 @@ def gen_image_sd15_lora_vae():
             model="korean-doll-likeness-v2-0"
         ),
         vae="stabilityai/sd-vae-ft-mse",
-        safety_checker=False
     )
 
     # Generate images
@@ -120,7 +121,6 @@ def gen_image_sd15_lora_controlnet():
                 )
             )
         ),
-        safety_checker=False
     )
 
     # Generate images
@@ -209,7 +209,7 @@ def gen_image_sdxl_controlnet_refiner():
         ),
         refiner=RefinerArgs(
             model="stabilityai/stable-diffusion-xl-refiner-1.0",
-            step=30
+            steps=30
         )
     )
 
@@ -261,7 +261,7 @@ def gen_image_sdxl_lora_refiner():
         ),
         refiner=RefinerArgs(
             model="stabilityai/stable-diffusion-xl-refiner-1.0",
-            step=30
+            steps=30
         )
     )
 
@@ -327,7 +327,7 @@ def gen_image_sdxl_lora_controlnet_refiner():
         ),
         refiner=RefinerArgs(
             model="stabilityai/stable-diffusion-xl-refiner-1.0",
-            step=30
+            steps=30
         )
     )
 
@@ -348,7 +348,6 @@ def mismatch_sd15_base_lora():
         lora=LoraArgs(
             model="gegants_2_1_768"
         ),
-        safety_checker=False
     )
 
     # Generate images
@@ -372,7 +371,6 @@ def mismatch_sd15_base_controlnet():
             image_dataurl=ref_image_dataurl,
             preprocess=PreprocessMethodCanny()
         ),
-        safety_checker=False
     )
 
     # Generate images
@@ -392,7 +390,6 @@ def mismatch_sd15_base_vae():
         lora=LoraArgs(
             model="gegants_2_1_768"
         ),
-        safety_checker=False,
         vae="runwayml/stable-diffusion-v1-5",
     )
 
@@ -432,7 +429,6 @@ def mismatch_sdxl_base_lora():
         lora=LoraArgs(
             model="korean-doll-likeness-v2-0"
         ),
-        safety_checker=False
     )
 
     # Generate images
