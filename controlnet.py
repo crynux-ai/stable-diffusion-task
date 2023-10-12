@@ -15,12 +15,11 @@ def add_controlnet_pipeline_call_args(call_args: dict, gen_image_args: GenImageA
     reference_image = Image.open(BytesIO(base64.b64decode(image_data)))
 
     if gen_image_args.controlnet.preprocess is not None:
-        if gen_image_args.controlnet.preprocess.method not in processor.MODELS.keys():
-            raise ValueError("unsupported preprocess method")
 
         args_dict = {}
 
-        if gen_image_args.controlnet.preprocess.args is not None:
+        if (hasattr(gen_image_args.controlnet.preprocess, 'args')
+                and gen_image_args.controlnet.preprocess.args is not None):
             args_dict = gen_image_args.controlnet.preprocess.args.model_dump()
 
         args_dict["detect_resolution"] = min(reference_image.width, reference_image.height)

@@ -5,13 +5,15 @@ A general framework to define and execute the Stable Diffusion task.
 
 ### Features
 
-* Same task definition to run Stable Diffusion 1.5, 2.1 and Stable Diffusion XL tasks
-* SDXL - Base + Refiner ([ensemble of expert denoisers](https://research.nvidia.com/labs/dir/eDiff-I/)) and standalone refiner
+* Unified task definition for Stable Diffusion 1.5, 2.1 and Stable Diffusion XL
+* SDXL - Base + Refiner ([ensemble of expert denoisers](https://research.nvidia.com/labs/dir/eDiff-I/)) and standalone Refiner
 * Controlnet and various preprocessing methods
 * LoRA
 * VAE
+* Textual Inversion
 * Long prompt
 * Prompt weighting using [Compel](https://github.com/damian0815/compel)
+* Maximized reproducibility
 
 
 ### Get started

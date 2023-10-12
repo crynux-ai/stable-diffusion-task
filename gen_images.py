@@ -70,7 +70,11 @@ def prepare_pipeline(args: GenImageArgs):
         )
 
     if args.textual_inversion != "":
-        pipeline.load_textual_invertion(args.textual_inversion)
+        pipeline.load_textual_invertion(
+            args.textual_inversion,
+            local_files_only=True,
+            cache_dir=config.config["data_dir"]["models"]["huggingface"]
+        )
 
     pipeline = pipeline.to("cuda")
 
