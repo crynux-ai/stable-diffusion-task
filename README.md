@@ -31,14 +31,14 @@ Install the dependencies:
 
 Cache the base model files:
 ```shell
-(venv) $ python ./prefetch.py
+(venv) $ python ./sd_task/prefetch.py
 ```
 
 Check and run the examples:
 ```shell
-(venv) $ python ./start.py
+(venv) $ python ./examples/sd15_controlnet_openpose.py
 ```
 
 ### Task Definition
 
-The complete task definition can be found in the file [```./gen_image_args.py```](gen_image_args/gen_image_args.py)
+The complete task definition can be found in the file [```./sd_task/inference_task_args/task_args.py```](sd_task/inference_task_args/task_args.py)

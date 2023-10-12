@@ -1,9 +1,15 @@
 from sd_task.inference_task_runner.inference_task import run_task
 from sd_task.inference_task_args.task_args import InferenceTaskArgs
 from sd_task.config import load_config
+from diffusers.utils import make_image_grid
+from reference_image import get_controlnet_ref_image_dataurl
+
 
 if __name__ == '__main__':
     load_config()
+
+    ref_image = get_controlnet_ref_image_dataurl()
+
     prompt = ("best quality, ultra high res, photorealistic++++, 1girl, off-shoulder sweate, smiling, "
               "faded ash gray messy bun hair+, border light, depth of field, looking at "
               "viewer, closeup")
@@ -21,8 +27,15 @@ if __name__ == '__main__':
             "safety_checker": False
         },
         "controlnet": {
-
+            "model": "lllyasviel/control_v11p_sd15_openpose",
+            "weight": 90,
+            "image_dataurl": ref_image,
+            "preprocess": {
+                "method": "openpose_face"
+            }
         }
     }
 
-    run_task(InferenceTaskArgs.model_validate(args))
+    images = run_task(InferenceTaskArgs.model_validate(args))
+    image_grid = make_image_grid(images, 3, 3)
+    image_grid.save("./data/sd15_controlnet_openpose.png")
