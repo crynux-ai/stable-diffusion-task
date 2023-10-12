@@ -1,4 +1,4 @@
-from inference_task_runner.inference_task import run_task
+from sd_task.inference_task_runner.inference_task import run_task
 
 if __name__ == '__main__':
     prompt = ("best quality, ultra high res, photorealistic++++, 1girl, off-shoulder sweate, smiling, "
