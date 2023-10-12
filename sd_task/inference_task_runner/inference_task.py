@@ -1,18 +1,18 @@
 import math
 import os
-from typing import Dict, Any
+from typing import List
 
 import torch
 from diffusers import (AutoencoderKL, AutoPipelineForText2Image,
                        ControlNetModel, DiffusionPipeline,
                        DPMSolverMultistepScheduler)
-
+from PIL import Image
 
 from sd_task import config
 from sd_task.inference_task_args.task_args import InferenceTaskArgs
 
 from .controlnet import add_controlnet_pipeline_call_args
-from .errors import process_task_exception, process_task_not_runnable_error
+from .errors import TaskNotRunnable, UnknownTaskError
 from .prompt import (add_prompt_pipeline_call_args,
                      add_prompt_refiner_sdxl_call_args)
 
@@ -121,7 +121,7 @@ def get_pipeline_call_args(pipeline, args: InferenceTaskArgs):
     return call_args
 
 
-def run_task(args: InferenceTaskArgs):
+def run_task(args: InferenceTaskArgs) -> List[Image.Image]:
     try:
         pipeline, refiner = prepare_pipeline(args)
 
@@ -154,16 +154,10 @@ def run_task(args: InferenceTaskArgs):
             generated_images.append(image.images[0])
 
         return generated_images
-    except TypeError as te:
-        process_task_not_runnable_error(te)
-    except ValueError as ve:
-        process_task_not_runnable_error(ve)
-    except AttributeError as ae:
-        process_task_not_runnable_error(ae)
-    except RuntimeError as re:
-        process_task_not_runnable_error(re)
-    except EnvironmentError as ee:
+    except (TypeError, ValueError, AttributeError, RuntimeError) as e:
+        raise TaskNotRunnable from e
+    except EnvironmentError as e:
         # Usually model files not found
-        process_task_exception(ee)
-    except Exception as exception:
-        process_task_exception(exception)
+        raise UnknownTaskError from e
+    except Exception as e:
+        raise UnknownTaskError from e
