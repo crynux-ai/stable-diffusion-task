@@ -1,11 +1,11 @@
-from controlnet_args import ControlnetArgs, PreprocessArgs, CannyArgs
+from inference_task_args.controlnet_args import ControlnetArgs, PreprocessMethodCanny, CannyArgs
 from diffusers.utils import make_image_grid
 from config import load_config
 from PIL import Image
 import io
 import base64
-from gen_image_args import GenImageArgs, LoraArgs, TaskConfig, RefinerArgs
-from gen_images import gen_images
+from inference_task_args.task_args import InferenceTaskArgs, LoraArgs, TaskConfig, RefinerArgs
+from inference_task_runner.inference_task import run_task
 
 prompt = ("best quality, ultra high res, photorealistic++++, 1girl, off-shoulder sweate, smiling, "
           "faded ash gray messy bun hair+, border light, depth of field, looking at "
@@ -24,7 +24,7 @@ def get_controlnet_ref_image_dataurl():
 
 
 def gen_image_sd15_original():
-    args = GenImageArgs(
+    args = InferenceTaskArgs(
         base_model="runwayml/stable-diffusion-v1-5",
         prompt=prompt,
         negative_prompt=negative_prompt,
@@ -33,7 +33,7 @@ def gen_image_sd15_original():
     )
 
     # Generate images
-    images = gen_images(args)
+    images = run_task(args)
 
     # Save the images in a grid
     image_grid = make_image_grid(images, 3, 3)
@@ -41,7 +41,7 @@ def gen_image_sd15_original():
 
 
 def gen_image_sd15_chilloutmix():
-    args = GenImageArgs(
+    args = InferenceTaskArgs(
         base_model="emilianJR/chilloutmix_NiPrunedFp32Fix",
         prompt=prompt,
         negative_prompt=negative_prompt,
@@ -50,7 +50,7 @@ def gen_image_sd15_chilloutmix():
     )
 
     # Generate images
-    images = gen_images(args)
+    images = run_task(args)
 
     # Save the images in a grid
     image_grid = make_image_grid(images, 3, 3)
@@ -58,7 +58,7 @@ def gen_image_sd15_chilloutmix():
 
 
 def gen_image_sd15_lora():
-    args = GenImageArgs(
+    args = InferenceTaskArgs(
         base_model="emilianJR/chilloutmix_NiPrunedFp32Fix",
         prompt=prompt,
         negative_prompt=negative_prompt,
@@ -70,7 +70,7 @@ def gen_image_sd15_lora():
     )
 
     # Generate images
-    images = gen_images(args)
+    images = run_task(args)
 
     # Save the images in a grid
     image_grid = make_image_grid(images, 3, 3)
@@ -78,7 +78,7 @@ def gen_image_sd15_lora():
 
 
 def gen_image_sd15_lora_vae():
-    args = GenImageArgs(
+    args = InferenceTaskArgs(
         base_model="emilianJR/chilloutmix_NiPrunedFp32Fix",
         prompt=prompt,
         negative_prompt=negative_prompt,
@@ -91,7 +91,7 @@ def gen_image_sd15_lora_vae():
     )
 
     # Generate images
-    images = gen_images(args)
+    images = run_task(args)
 
     # Save the images in a grid
     image_grid = make_image_grid(images, 3, 3)
@@ -102,7 +102,7 @@ def gen_image_sd15_lora_controlnet():
 
     ref_image_dataurl = get_controlnet_ref_image_dataurl()
 
-    args = GenImageArgs(
+    args = InferenceTaskArgs(
         base_model="emilianJR/chilloutmix_NiPrunedFp32Fix",
         prompt=prompt,
         negative_prompt=negative_prompt,
@@ -113,8 +113,7 @@ def gen_image_sd15_lora_controlnet():
         controlnet=ControlnetArgs(
             model="lllyasviel/sd-controlnet-canny",
             image_dataurl=ref_image_dataurl,
-            preprocess=PreprocessArgs(
-                method="canny",
+            preprocess=PreprocessMethodCanny(
                 args=CannyArgs(
                     low_threshold=50,
                     high_threshold=100
@@ -125,7 +124,7 @@ def gen_image_sd15_lora_controlnet():
     )
 
     # Generate images
-    images = gen_images(args)
+    images = run_task(args)
 
     # Save the images in a grid
     image_grid = make_image_grid(images, 3, 3)
@@ -133,7 +132,7 @@ def gen_image_sd15_lora_controlnet():
 
 
 def gen_image_sdxl():
-    args = GenImageArgs(
+    args = InferenceTaskArgs(
         base_model="stabilityai/stable-diffusion-xl-base-1.0",
         prompt=prompt,
         negative_prompt=negative_prompt,
@@ -141,7 +140,7 @@ def gen_image_sdxl():
     )
 
     # Generate images
-    images = gen_images(args)
+    images = run_task(args)
 
     # Save the images in a grid
     image_grid = make_image_grid(images, 3, 3)
@@ -149,7 +148,7 @@ def gen_image_sdxl():
 
 
 def gen_image_sdxl_refiner():
-    args = GenImageArgs(
+    args = InferenceTaskArgs(
         base_model="stabilityai/stable-diffusion-xl-base-1.0",
         prompt=prompt,
         negative_prompt=negative_prompt,
@@ -160,7 +159,7 @@ def gen_image_sdxl_refiner():
     )
 
     # Generate images
-    images = gen_images(args)
+    images = run_task(args)
 
     # Save the images in a grid
     image_grid = make_image_grid(images, 3, 3)
@@ -171,7 +170,7 @@ def gen_image_sdxl_controlnet():
 
     ref_image_dataurl = get_controlnet_ref_image_dataurl()
 
-    args = GenImageArgs(
+    args = InferenceTaskArgs(
         base_model="stabilityai/stable-diffusion-xl-base-1.0",
         prompt=prompt,
         negative_prompt=negative_prompt,
@@ -179,14 +178,12 @@ def gen_image_sdxl_controlnet():
         controlnet=ControlnetArgs(
             model="diffusers/controlnet-canny-sdxl-1.0",
             image_dataurl=ref_image_dataurl,
-            preprocess=PreprocessArgs(
-                method="canny"
-            )
+            preprocess=PreprocessMethodCanny()
         )
     )
 
     # Generate images
-    images = gen_images(args)
+    images = run_task(args)
 
     # Save the images in a grid
     image_grid = make_image_grid(images, 3, 3)
@@ -197,7 +194,7 @@ def gen_image_sdxl_controlnet_refiner():
 
     ref_image_dataurl = get_controlnet_ref_image_dataurl()
 
-    args = GenImageArgs(
+    args = InferenceTaskArgs(
         base_model="stabilityai/stable-diffusion-xl-base-1.0",
         prompt=prompt,
         negative_prompt=negative_prompt,
@@ -208,9 +205,7 @@ def gen_image_sdxl_controlnet_refiner():
         controlnet=ControlnetArgs(
             model="diffusers/controlnet-canny-sdxl-1.0",
             image_dataurl=ref_image_dataurl,
-            preprocess=PreprocessArgs(
-                method="canny"
-            )
+            preprocess=PreprocessMethodCanny()
         ),
         refiner=RefinerArgs(
             model="stabilityai/stable-diffusion-xl-refiner-1.0",
@@ -219,7 +214,7 @@ def gen_image_sdxl_controlnet_refiner():
     )
 
     # Generate images
-    images = gen_images(args)
+    images = run_task(args)
 
     # Save the images in a grid
     image_grid = make_image_grid(images, 3, 3)
@@ -227,7 +222,7 @@ def gen_image_sdxl_controlnet_refiner():
 
 
 def gen_image_sdxl_lora():
-    args = GenImageArgs(
+    args = InferenceTaskArgs(
         base_model="stabilityai/stable-diffusion-xl-base-1.0",
         prompt="desert, full shot, dark stillsuit, stillsuit mask up, gloves, solo, highly detailed eyes, "
                "hyper-detailed, high quality visuals, dim Lighting, ultra-realistic, sharply focused, octane render, "
@@ -243,7 +238,7 @@ def gen_image_sdxl_lora():
     )
 
     # Generate images
-    images = gen_images(args)
+    images = run_task(args)
 
     # Save the images in a grid
     image_grid = make_image_grid(images, 3, 3)
@@ -251,7 +246,7 @@ def gen_image_sdxl_lora():
 
 
 def gen_image_sdxl_lora_refiner():
-    args = GenImageArgs(
+    args = InferenceTaskArgs(
         base_model="stabilityai/stable-diffusion-xl-base-1.0",
         prompt="desert, full shot, dark stillsuit, stillsuit mask up, gloves, solo, highly detailed eyes, "
                "hyper-detailed, high quality visuals, dim Lighting, ultra-realistic, sharply focused, octane render, "
@@ -271,7 +266,7 @@ def gen_image_sdxl_lora_refiner():
     )
 
     # Generate images
-    images = gen_images(args)
+    images = run_task(args)
 
     # Save the images in a grid
     image_grid = make_image_grid(images, 3, 3)
@@ -281,7 +276,7 @@ def gen_image_sdxl_lora_refiner():
 def gen_image_sdxl_lora_controlnet():
     ref_image_dataurl = get_controlnet_ref_image_dataurl()
 
-    args = GenImageArgs(
+    args = InferenceTaskArgs(
         base_model="stabilityai/stable-diffusion-xl-base-1.0",
         prompt="desert, full shot, dark stillsuit, stillsuit mask up, gloves, solo, highly detailed eyes, "
                "hyper-detailed, high quality visuals, dim Lighting, ultra-realistic, sharply focused, octane render, "
@@ -297,14 +292,12 @@ def gen_image_sdxl_lora_controlnet():
         controlnet=ControlnetArgs(
             model="diffusers/controlnet-canny-sdxl-1.0",
             image_dataurl=ref_image_dataurl,
-            preprocess=PreprocessArgs(
-                method="canny"
-            )
+            preprocess=PreprocessMethodCanny()
         )
     )
 
     # Generate images
-    images = gen_images(args)
+    images = run_task(args)
 
     # Save the images in a grid
     image_grid = make_image_grid(images, 3, 3)
@@ -314,7 +307,7 @@ def gen_image_sdxl_lora_controlnet():
 def gen_image_sdxl_lora_controlnet_refiner():
     ref_image_dataurl = get_controlnet_ref_image_dataurl()
 
-    args = GenImageArgs(
+    args = InferenceTaskArgs(
         base_model="stabilityai/stable-diffusion-xl-base-1.0",
         prompt="desert, full shot, dark stillsuit, stillsuit mask up, gloves, solo, highly detailed eyes, "
                "hyper-detailed, high quality visuals, dim Lighting, ultra-realistic, sharply focused, octane render, "
@@ -330,9 +323,7 @@ def gen_image_sdxl_lora_controlnet_refiner():
         controlnet=ControlnetArgs(
             model="diffusers/controlnet-canny-sdxl-1.0",
             image_dataurl=ref_image_dataurl,
-            preprocess=PreprocessArgs(
-                method="canny"
-            )
+            preprocess=PreprocessMethodCanny()
         ),
         refiner=RefinerArgs(
             model="stabilityai/stable-diffusion-xl-refiner-1.0",
@@ -341,7 +332,7 @@ def gen_image_sdxl_lora_controlnet_refiner():
     )
 
     # Generate images
-    images = gen_images(args)
+    images = run_task(args)
 
     # Save the images in a grid
     image_grid = make_image_grid(images, 3, 3)
@@ -349,7 +340,7 @@ def gen_image_sdxl_lora_controlnet_refiner():
 
 
 def mismatch_sd15_base_lora():
-    args = GenImageArgs(
+    args = InferenceTaskArgs(
         base_model="emilianJR/chilloutmix_NiPrunedFp32Fix",
         prompt=prompt,
         negative_prompt=negative_prompt,
@@ -361,7 +352,7 @@ def mismatch_sd15_base_lora():
     )
 
     # Generate images
-    images = gen_images(args)
+    images = run_task(args)
 
     # Save the images in a grid
     image_grid = make_image_grid(images, 3, 3)
@@ -371,7 +362,7 @@ def mismatch_sd15_base_lora():
 def mismatch_sd15_base_controlnet():
     ref_image_dataurl = get_controlnet_ref_image_dataurl()
 
-    args = GenImageArgs(
+    args = InferenceTaskArgs(
         base_model="emilianJR/chilloutmix_NiPrunedFp32Fix",
         prompt=prompt,
         negative_prompt=negative_prompt,
@@ -379,15 +370,13 @@ def mismatch_sd15_base_controlnet():
         controlnet=ControlnetArgs(
             model="diffusers/controlnet-canny-sdxl-1.0",
             image_dataurl=ref_image_dataurl,
-            preprocess=PreprocessArgs(
-                method="canny"
-            )
+            preprocess=PreprocessMethodCanny()
         ),
         safety_checker=False
     )
 
     # Generate images
-    images = gen_images(args)
+    images = run_task(args)
 
     # Save the images in a grid
     image_grid = make_image_grid(images, 3, 3)
@@ -395,7 +384,7 @@ def mismatch_sd15_base_controlnet():
 
 
 def mismatch_sd15_base_vae():
-    args = GenImageArgs(
+    args = InferenceTaskArgs(
         base_model="emilianJR/chilloutmix_NiPrunedFp32Fix",
         prompt=prompt,
         negative_prompt=negative_prompt,
@@ -408,7 +397,7 @@ def mismatch_sd15_base_vae():
     )
 
     # Generate images
-    images = gen_images(args)
+    images = run_task(args)
 
     # Save the images in a grid
     image_grid = make_image_grid(images, 3, 3)
@@ -416,7 +405,7 @@ def mismatch_sd15_base_vae():
 
 
 def mismatch_sdxl_base_refiner():
-    args = GenImageArgs(
+    args = InferenceTaskArgs(
         base_model="stabilityai/stable-diffusion-xl-base-1.0",
         prompt=prompt,
         negative_prompt=negative_prompt,
@@ -427,7 +416,7 @@ def mismatch_sdxl_base_refiner():
     )
 
     # Generate images
-    images = gen_images(args)
+    images = run_task(args)
 
     # Save the images in a grid
     image_grid = make_image_grid(images, 3, 3)
@@ -435,7 +424,7 @@ def mismatch_sdxl_base_refiner():
 
 
 def mismatch_sdxl_base_lora():
-    args = GenImageArgs(
+    args = InferenceTaskArgs(
         base_model="stabilityai/stable-diffusion-xl-base-1.0",
         prompt=prompt,
         negative_prompt=negative_prompt,
@@ -447,7 +436,7 @@ def mismatch_sdxl_base_lora():
     )
 
     # Generate images
-    images = gen_images(args)
+    images = run_task(args)
 
     # Save the images in a grid
     image_grid = make_image_grid(images, 3, 3)
@@ -458,7 +447,7 @@ def mismatch_sdxl_base_lora():
 def mismatch_sdxl_base_controlnet():
     ref_image_dataurl = get_controlnet_ref_image_dataurl()
 
-    args = GenImageArgs(
+    args = InferenceTaskArgs(
         base_model="stabilityai/stable-diffusion-xl-base-1.0",
         prompt=prompt,
         negative_prompt=negative_prompt,
@@ -466,14 +455,12 @@ def mismatch_sdxl_base_controlnet():
         controlnet=ControlnetArgs(
             model="lllyasviel/sd-controlnet-canny",
             image_dataurl=ref_image_dataurl,
-            preprocess=PreprocessArgs(
-                method="canny"
-            )
+            preprocess=PreprocessMethodCanny()
         )
     )
 
     # Generate images
-    images = gen_images(args)
+    images = run_task(args)
 
     # Save the images in a grid
     image_grid = make_image_grid(images, 3, 3)

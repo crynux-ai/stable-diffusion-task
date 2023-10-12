@@ -1,4 +1,4 @@
-from gen_image_args import GenImageArgs
+from inference_task_args.task_args import InferenceTaskArgs
 import re
 from PIL import Image
 from io import BytesIO
@@ -6,7 +6,7 @@ import base64
 from controlnet_aux import processor
 
 
-def add_controlnet_pipeline_call_args(call_args: dict, gen_image_args: GenImageArgs):
+def add_controlnet_pipeline_call_args(call_args: dict, gen_image_args: InferenceTaskArgs):
     image_data = re.sub(
         '^data:image/.+;base64,',
         '',

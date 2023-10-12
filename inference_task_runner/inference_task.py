@@ -7,10 +7,10 @@ import torch
 import os
 import math
 import config
-from controlnet import add_controlnet_pipeline_call_args
-from prompt import add_prompt_pipeline_call_args, add_prompt_refiner_sdxl_call_args
-from gen_image_args import GenImageArgs
-from errors import process_task_exception, process_task_not_runnable_error
+from inference_task_runner.controlnet import add_controlnet_pipeline_call_args
+from inference_task_runner.prompt import add_prompt_pipeline_call_args, add_prompt_refiner_sdxl_call_args
+from inference_task_args.task_args import InferenceTaskArgs
+from inference_task_runner.errors import process_task_exception, process_task_not_runnable_error
 
 # Use deterministic algorithms for reproducibility
 os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":16:8"
@@ -18,7 +18,7 @@ torch.backends.cudnn.benchmark = False
 torch.use_deterministic_algorithms(True)
 
 
-def get_pipeline_init_args(args: GenImageArgs = None):
+def get_pipeline_init_args(args: InferenceTaskArgs = None):
 
     init_args = {
         "torch_dtype": torch.float16,
@@ -33,7 +33,7 @@ def get_pipeline_init_args(args: GenImageArgs = None):
     return init_args
 
 
-def prepare_pipeline(args: GenImageArgs):
+def prepare_pipeline(args: InferenceTaskArgs):
     pipeline_args = get_pipeline_init_args(args)
 
     if args.controlnet is not None:
@@ -91,7 +91,7 @@ def prepare_pipeline(args: GenImageArgs):
     return pipeline, refiner
 
 
-def get_pipeline_call_args(pipeline, args: GenImageArgs):
+def get_pipeline_call_args(pipeline, args: InferenceTaskArgs):
     call_args = {
         "num_inference_steps": args.task_config.steps,
         "width": args.task_config.image_width,
@@ -114,7 +114,7 @@ def get_pipeline_call_args(pipeline, args: GenImageArgs):
     return call_args
 
 
-def gen_images(args: GenImageArgs):
+def run_task(args: InferenceTaskArgs):
     try:
         pipeline, refiner = prepare_pipeline(args)
 

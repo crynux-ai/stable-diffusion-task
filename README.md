@@ -41,4 +41,4 @@ Check and run the examples:
 
 ### Task Definition
 
-The complete task definition can be found in the file [```./gen_image_args.py```](./gen_image_args.py)
+The complete task definition can be found in the file [```./gen_image_args.py```](gen_image_args/gen_image_args.py)
