@@ -1,7 +1,7 @@
-from typing_extensions import Annotated
-from pydantic.functional_validators import BeforeValidator
-from pydantic.functional_serializers import PlainSerializer
 from annotated_types import Gt, Le, MinLen
+from pydantic.functional_serializers import PlainSerializer
+from pydantic.functional_validators import BeforeValidator
+from typing_extensions import Annotated
 
 
 def fraction_int_to_float(fraction: int) -> float:

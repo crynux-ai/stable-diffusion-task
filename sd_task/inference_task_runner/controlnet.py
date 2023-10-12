@@ -1,9 +1,11 @@
-from inference_task_args.task_args import InferenceTaskArgs
-import re
-from PIL import Image
-from io import BytesIO
 import base64
+import re
+from io import BytesIO
+
 from controlnet_aux import processor
+from PIL import Image
+
+from sd_task.inference_task_args.task_args import InferenceTaskArgs
 
 
 def add_controlnet_pipeline_call_args(call_args: dict, gen_image_args: InferenceTaskArgs):

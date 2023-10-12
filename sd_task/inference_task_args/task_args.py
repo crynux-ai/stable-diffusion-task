@@ -1,8 +1,9 @@
-from pydantic import BaseModel
-from inference_task_args.controlnet_args import ControlnetArgs
-from inference_task_args.types import FloatFractionAsInt, NonEmptyString
-from typing_extensions import Annotated
 from annotated_types import Gt, Le
+from pydantic import BaseModel
+from typing_extensions import Annotated
+
+from .controlnet_args import ControlnetArgs
+from .types import FloatFractionAsInt, NonEmptyString
 
 
 class RefinerArgs(BaseModel):

@@ -1,6 +1,8 @@
-from pydantic import BaseModel, Field
 from typing import Literal, Union
-from inference_task_args.types import FloatFractionAsInt, NonEmptyString
+
+from pydantic import BaseModel, Field
+
+from .types import FloatFractionAsInt, NonEmptyString
 
 
 class CannyArgs(BaseModel):
