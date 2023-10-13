@@ -1,10 +1,8 @@
 from sd_task.inference_task_runner.inference_task import run_task
 from sd_task.inference_task_args.task_args import InferenceTaskArgs
-from sd_task.config import load_config
 from diffusers.utils import make_image_grid
 
 if __name__ == '__main__':
-    load_config()
     prompt = ("best quality, ultra high res, photorealistic++++, 1girl, off-shoulder sweater, smiling, "
               "faded ash gray messy bun hair+, border light, depth of field, looking at "
               "viewer, closeup")
