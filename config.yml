@@ -12,7 +12,6 @@ preloaded_models:
       variant: "fp16"
     - id: "stabilityai/stable-diffusion-xl-refiner-1.0"
       variant: "fp16"
-    - id: "a1079602570/animefull-final-pruned"
   controlnet:
     - id: "lllyasviel/sd-controlnet-canny"
     - id: "lllyasviel/control_v11p_sd15_openpose"

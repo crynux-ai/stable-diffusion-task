@@ -27,7 +27,7 @@ if __name__ == '__main__':
             "safety_checker": False
         },
         "controlnet": {
-            "model": "lllyasviel/sd_controlnet_canny",
+            "model": "lllyasviel/sd-controlnet-canny",
             "image_dataurl": ref_image,
             "preprocess": {
                 "method": "canny",

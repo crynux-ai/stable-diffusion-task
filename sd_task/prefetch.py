@@ -24,31 +24,34 @@ def get_pretrained_args(model_config):
 def prefetch_models():
 
     # base models
-    for model_config in config.config["preloaded_models"]["base"]:
-        print("Preloading base model: ", model_config["id"])
+    if config.config["preloaded_models"]["base"] is not None:
+        for model_config in config.config["preloaded_models"]["base"]:
+            print("Preloading base model: ", model_config["id"])
 
-        model_args = get_pretrained_args(model_config)
-        DiffusionPipeline.from_pretrained(**model_args)
+            model_args = get_pretrained_args(model_config)
+            DiffusionPipeline.from_pretrained(**model_args)
 
-        print("Successfully preloaded base model: ", model_config["id"])
+            print("Successfully preloaded base model: ", model_config["id"])
 
     # controlnet models
-    for model_config in config.config["preloaded_models"]["controlnet"]:
-        print("Preloading controlnet model: ", model_config["id"])
+    if config.config["preloaded_models"]["controlnet"] is not None:
+        for model_config in config.config["preloaded_models"]["controlnet"]:
+            print("Preloading controlnet model: ", model_config["id"])
 
-        model_args = get_pretrained_args(model_config)
-        ControlNetModel.from_pretrained(**model_args)
+            model_args = get_pretrained_args(model_config)
+            ControlNetModel.from_pretrained(**model_args)
 
-        print("Successfully preloaded controlnet model: ", model_config["id"])
+            print("Successfully preloaded controlnet model: ", model_config["id"])
 
     # vae models
-    for model_config in config.config["preloaded_models"]["vae"]:
-        print("Preloading vae model: ", model_config["id"])
+    if config.config["preloaded_models"]["vae"] is not None:
+        for model_config in config.config["preloaded_models"]["vae"]:
+            print("Preloading vae model: ", model_config["id"])
 
-        model_args = get_pretrained_args(model_config)
-        AutoencoderKL.from_pretrained(**model_args)
+            model_args = get_pretrained_args(model_config)
+            AutoencoderKL.from_pretrained(**model_args)
 
-        print("Successfully preloaded vae model: ", model_config["id"])
+            print("Successfully preloaded vae model: ", model_config["id"])
 
 
 if __name__ == "__main__":

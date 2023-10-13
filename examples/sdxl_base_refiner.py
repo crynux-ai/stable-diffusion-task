@@ -14,19 +14,18 @@ if __name__ == '__main__':
                        "age spot, glans")
 
     args = {
-        "base_model": "emilianJR/chilloutmix_NiPrunedFp32Fix",
+        "base_model": "stabilityai/stable-diffusion-xl-base-1.0",
         "prompt": prompt,
         "negative_prompt": negative_prompt,
         "task_config": {
-            "num_images": 9,
-            "safety_checker": False
+            "num_images": 9
         },
-        "lora": {
-            "model": "korean-doll-likeness-v2-0",
-            "weight": 70
+        "refiner": {
+            "model": "stabilityai/stable-diffusion-xl-refiner-1.0",
+            "denoising_cutoff": 80
         }
     }
 
     images = run_task(InferenceTaskArgs.model_validate(args))
     image_grid = make_image_grid(images, 3, 3)
-    image_grid.save("./data/sd15_lora.png")
+    image_grid.save("./data/sdxl_base_refiner.png")
