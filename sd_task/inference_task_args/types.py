@@ -6,7 +6,7 @@ from typing_extensions import Annotated
 
 def fraction_int_to_float(fraction: int) -> float:
 
-    if type(fraction).__name__ == 'int':
+    if isinstance(fraction, int):
         return float(fraction) / 100.0
     else:
         return fraction

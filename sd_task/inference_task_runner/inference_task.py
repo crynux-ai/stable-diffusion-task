@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import math
 import os
-from typing import List
+from typing import List, Dict, Any
 
 import torch
 from diffusers import (AutoencoderKL, AutoPipelineForText2Image,
@@ -8,7 +10,7 @@ from diffusers import (AutoencoderKL, AutoPipelineForText2Image,
                        DPMSolverMultistepScheduler)
 from PIL import Image
 
-from sd_task import config
+from sd_task.config import get_config, Config
 from sd_task.inference_task_args.task_args import InferenceTaskArgs
 
 from .controlnet import add_controlnet_pipeline_call_args
@@ -21,12 +23,12 @@ torch.backends.cudnn.benchmark = False
 torch.use_deterministic_algorithms(True)
 
 
-def get_pipeline_init_args(args: InferenceTaskArgs = None):
+def get_pipeline_init_args(cache_dir: str, args: InferenceTaskArgs | None = None):
     init_args = {
         "torch_dtype": torch.float16,
         "variant": "fp16",
         "local_files_only": True,
-        "cache_dir": config.config["data_dir"]["models"]["huggingface"],
+        "cache_dir": cache_dir,
     }
 
     if args is not None and args.task_config.safety_checker is False:
@@ -35,15 +37,15 @@ def get_pipeline_init_args(args: InferenceTaskArgs = None):
     return init_args
 
 
-def prepare_pipeline(args: InferenceTaskArgs):
-    pipeline_args = get_pipeline_init_args(args)
+def prepare_pipeline(cache_dir: str, lora_dir: str, args: InferenceTaskArgs):
+    pipeline_args = get_pipeline_init_args(cache_dir, args)
 
     if args.controlnet is not None:
         controlnet_model = ControlNetModel.from_pretrained(
             args.controlnet.model,
             torch_dtype=torch.float16,
             local_files_only=True,
-            cache_dir=config.config["data_dir"]["models"]["huggingface"],
+            cache_dir=cache_dir,
         )
 
         pipeline_args["controlnet"] = controlnet_model
@@ -62,13 +64,13 @@ def prepare_pipeline(args: InferenceTaskArgs):
             args.vae,
             torch_dtype=torch.float16,
             local_files_only=True,
-            cache_dir=config.config["data_dir"]["models"]["huggingface"],
+            cache_dir=cache_dir,
         ).to("cuda")
 
     if args.lora is not None:
         # raises ValueError if the lora model is not compatible with the base model
         pipeline.load_lora_weights(
-            os.path.join(config.config["data_dir"]["models"]["lora"], args.lora.model),
+            os.path.join(lora_dir, args.lora.model),
             lora_scale=args.lora.weight,
             local_files_only=True,
         )
@@ -77,7 +79,7 @@ def prepare_pipeline(args: InferenceTaskArgs):
         pipeline.load_textual_invertion(
             args.textual_inversion,
             local_files_only=True,
-            cache_dir=config.config["data_dir"]["models"]["huggingface"],
+            cache_dir=cache_dir,
         )
 
     pipeline = pipeline.to("cuda")
@@ -86,7 +88,7 @@ def prepare_pipeline(args: InferenceTaskArgs):
     refiner = None
 
     if args.refiner is not None:
-        refiner_init_args = get_pipeline_init_args()
+        refiner_init_args = get_pipeline_init_args(cache_dir)
         refiner_init_args["tokenizer_2"] = pipeline.tokenizer_2
         refiner_init_args["text_encoder_2"] = pipeline.text_encoder_2
         refiner_init_args["vae"] = pipeline.vae
@@ -97,8 +99,8 @@ def prepare_pipeline(args: InferenceTaskArgs):
     return pipeline, refiner
 
 
-def get_pipeline_call_args(pipeline, args: InferenceTaskArgs):
-    call_args = {
+def get_pipeline_call_args(pipeline, args: InferenceTaskArgs) -> Dict[str, Any]:
+    call_args: Dict[str, Any] = {
         "num_inference_steps": args.task_config.steps,
         "width": args.task_config.image_width,
         "height": args.task_config.image_height,
@@ -120,15 +122,20 @@ def get_pipeline_call_args(pipeline, args: InferenceTaskArgs):
     return call_args
 
 
-def run_task(args: InferenceTaskArgs) -> List[Image.Image]:
-    pipeline, refiner = prepare_pipeline(args)
+def run_task(args: InferenceTaskArgs, config: Config | None = None) -> List[Image.Image]:
+    if config is None:
+        config = get_config()
+    
+    cache_dir = config.data_dir.models.huggingface
+    lora_dir = config.data_dir.models.lora
+    pipeline, refiner = prepare_pipeline(cache_dir, lora_dir, args)
 
     generated_images = []
 
     call_args = get_pipeline_call_args(pipeline, args)
     refiner_call_args = {}
 
-    if refiner is not None:
+    if args.refiner is not None and refiner is not None:
         add_prompt_refiner_sdxl_call_args(refiner_call_args, refiner, args)
         refiner_call_args["num_inference_steps"] = math.ceil(args.refiner.steps)
 
