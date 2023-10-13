@@ -1,11 +1,8 @@
 from sd_task.inference_task_runner.inference_task import run_task
 from sd_task.inference_task_args.task_args import InferenceTaskArgs
-from sd_task.config import load_config
 from diffusers.utils import make_image_grid
 
 if __name__ == '__main__':
-    load_config()
-
     args = {
         "base_model": "stabilityai/stable-diffusion-xl-base-1.0",
         "prompt": "best quality, ultra high res, photorealistic++++, 1girl, desert, full shot, dark stillsuit, "
