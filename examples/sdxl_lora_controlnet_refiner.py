@@ -2,9 +2,13 @@ from sd_task.inference_task_runner.inference_task import run_task
 from sd_task.inference_task_args.task_args import InferenceTaskArgs
 from sd_task.config import load_config
 from diffusers.utils import make_image_grid
+from reference_image import get_controlnet_ref_image_dataurl
+
 
 if __name__ == '__main__':
     load_config()
+
+    ref_image = get_controlnet_ref_image_dataurl()
 
     args = {
         "base_model": "stabilityai/stable-diffusion-xl-base-1.0",
@@ -22,10 +26,20 @@ if __name__ == '__main__':
         },
         "lora": {
             "model": "stillsuit-sdxl"
+        },
+        "controlnet": {
+            "model": "diffusers/controlnet-canny-sdxl-1.0",
+            "image_dataurl": ref_image,
+            "preprocess": {
+                "method": "canny"
+            },
+            "weight": 70
+        },
+        "refiner": {
+            "model": "stabilityai/stable-diffusion-xl-refiner-1.0"
         }
-
     }
 
     images = run_task(InferenceTaskArgs.model_validate(args))
     image_grid = make_image_grid(images, 3, 3)
-    image_grid.save("./data/sdxl_lora.png")
+    image_grid.save("./data/sdxl_lora_controlnet_refiner.png")
