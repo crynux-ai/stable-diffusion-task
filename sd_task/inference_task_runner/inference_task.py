@@ -10,7 +10,7 @@ from diffusers import (AutoencoderKL, AutoPipelineForText2Image,
                        DPMSolverMultistepScheduler)
 from PIL import Image
 
-from sd_task.config import get_config, Config, ProxyConfig
+from sd_task.config import get_config, Config
 from sd_task.inference_task_args.task_args import InferenceTaskArgs
 
 from .controlnet import add_controlnet_pipeline_call_args
@@ -18,6 +18,8 @@ from .prompt import (add_prompt_pipeline_call_args,
                      add_prompt_refiner_sdxl_call_args)
 
 from .download_model import check_and_prepare_models
+
+from .errors import TaskExecutionError, ModelDownloadError
 
 # Use deterministic algorithms for reproducibility
 os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":16:8"
@@ -129,41 +131,47 @@ def run_task(args: InferenceTaskArgs, config: Config | None = None) -> List[Imag
     if config is None:
         config = get_config()
 
-    check_and_prepare_models(
-        args,
-        external_model_cache_dir=config.data_dir.models.external,
-        hf_model_cache_dir=config.data_dir.models.huggingface,
-        proxy=config.proxy
-    )
+    try:
+        check_and_prepare_models(
+            args,
+            external_model_cache_dir=config.data_dir.models.external,
+            hf_model_cache_dir=config.data_dir.models.huggingface,
+            proxy=config.proxy
+        )
+    except Exception as e:
+        raise ModelDownloadError() from e
 
-    pipeline, refiner = prepare_pipeline(config.data_dir.models.huggingface, args)
+    try:
+        pipeline, refiner = prepare_pipeline(config.data_dir.models.huggingface, args)
 
-    generated_images = []
+        generated_images = []
 
-    call_args = get_pipeline_call_args(pipeline, args)
-    refiner_call_args = {}
+        call_args = get_pipeline_call_args(pipeline, args)
+        refiner_call_args = {}
 
-    if args.refiner is not None and refiner is not None:
-        add_prompt_refiner_sdxl_call_args(refiner_call_args, refiner, args)
-        refiner_call_args["num_inference_steps"] = math.ceil(args.refiner.steps)
+        if args.refiner is not None and refiner is not None:
+            add_prompt_refiner_sdxl_call_args(refiner_call_args, refiner, args)
+            refiner_call_args["num_inference_steps"] = math.ceil(args.refiner.steps)
 
-        # denoising_end is not supported by StableDiffusionXLControlNetPipeline yet.
-        if args.controlnet is None:
-            refiner_call_args["denoising_start"] = args.refiner.denoising_cutoff
+            # denoising_end is not supported by StableDiffusionXLControlNetPipeline yet.
+            if args.controlnet is None:
+                refiner_call_args["denoising_start"] = args.refiner.denoising_cutoff
 
-    for i in range(args.task_config.num_images):
-        current_seed = args.task_config.seed + i * 3000
+        for i in range(args.task_config.num_images):
+            current_seed = args.task_config.seed + i * 3000
 
-        # generator on CPU for reproducibility
-        call_args["generator"] = torch.manual_seed(current_seed)
+            # generator on CPU for reproducibility
+            call_args["generator"] = torch.manual_seed(current_seed)
 
-        image = pipeline(**call_args)
+            image = pipeline(**call_args)
 
-        if refiner is not None:
-            refiner_call_args["image"] = image.images
-            refiner_call_args["generator"] = torch.manual_seed(current_seed)
-            image = refiner(**refiner_call_args)
+            if refiner is not None:
+                refiner_call_args["image"] = image.images
+                refiner_call_args["generator"] = torch.manual_seed(current_seed)
+                image = refiner(**refiner_call_args)
 
-        generated_images.append(image.images[0])
+            generated_images.append(image.images[0])
 
-    return generated_images
+        return generated_images
+    except Exception as e:
+        raise TaskExecutionError() from e
