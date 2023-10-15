@@ -74,13 +74,12 @@ def prepare_pipeline(cache_dir: str, args: InferenceTaskArgs):
         pipeline.load_lora_weights(
             args.lora.model,
             lora_scale=args.lora.weight,
-            local_files_only=True,
+            cache_dir=cache_dir,
         )
 
     if args.textual_inversion != "":
-        pipeline.load_textual_invertion(
+        pipeline.load_textual_inversion(
             args.textual_inversion,
-            local_files_only=True,
             cache_dir=cache_dir,
         )
 
