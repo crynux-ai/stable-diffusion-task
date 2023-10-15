@@ -10,7 +10,7 @@ from diffusers import (AutoencoderKL, AutoPipelineForText2Image,
                        DPMSolverMultistepScheduler)
 from PIL import Image
 
-from sd_task.config import get_config, Config
+from sd_task.config import get_config, Config, ProxyConfig
 from sd_task.inference_task_args.task_args import InferenceTaskArgs
 
 from .controlnet import add_controlnet_pipeline_call_args
@@ -25,12 +25,25 @@ torch.backends.cudnn.benchmark = False
 torch.use_deterministic_algorithms(True)
 
 
-def get_pipeline_init_args(cache_dir: str, args: InferenceTaskArgs | None = None):
+def get_hf_proxy_dict(proxy: ProxyConfig):
+    if proxy is not None and proxy.host != "":
+
+        proxy_str = proxy.host + ":" + str(proxy.port)
+
+        return {
+            'https': proxy_str,
+            'http': proxy_str
+        }
+    else:
+        return None
+
+
+def get_pipeline_init_args(cache_dir: str, args: InferenceTaskArgs | None = None, proxy: ProxyConfig | None = None):
     init_args = {
         "torch_dtype": torch.float16,
         "variant": "fp16",
-        "local_files_only": True,
         "cache_dir": cache_dir,
+        "proxies": get_hf_proxy_dict(proxy)
     }
 
     if args is not None and args.task_config.safety_checker is False:
@@ -39,15 +52,15 @@ def get_pipeline_init_args(cache_dir: str, args: InferenceTaskArgs | None = None
     return init_args
 
 
-def prepare_pipeline(cache_dir: str, args: InferenceTaskArgs):
-    pipeline_args = get_pipeline_init_args(cache_dir, args)
+def prepare_pipeline(cache_dir: str, args: InferenceTaskArgs, proxy: ProxyConfig | None = None):
+    pipeline_args = get_pipeline_init_args(cache_dir, args, proxy)
 
     if args.controlnet is not None:
         controlnet_model = ControlNetModel.from_pretrained(
             args.controlnet.model,
             torch_dtype=torch.float16,
-            local_files_only=True,
             cache_dir=cache_dir,
+            proxies=get_hf_proxy_dict(proxy)
         )
 
         pipeline_args["controlnet"] = controlnet_model
@@ -65,8 +78,8 @@ def prepare_pipeline(cache_dir: str, args: InferenceTaskArgs):
         pipeline.vae = AutoencoderKL.from_pretrained(
             args.vae,
             torch_dtype=torch.float16,
-            local_files_only=True,
             cache_dir=cache_dir,
+            proxies=get_hf_proxy_dict(proxy)
         ).to("cuda")
 
     if args.lora is not None:
@@ -75,12 +88,14 @@ def prepare_pipeline(cache_dir: str, args: InferenceTaskArgs):
             args.lora.model,
             lora_scale=args.lora.weight,
             cache_dir=cache_dir,
+            proxies=get_hf_proxy_dict(proxy)
         )
 
     if args.textual_inversion != "":
         pipeline.load_textual_inversion(
             args.textual_inversion,
             cache_dir=cache_dir,
+            proxies=get_hf_proxy_dict(proxy)
         )
 
     pipeline = pipeline.to("cuda")
@@ -89,7 +104,7 @@ def prepare_pipeline(cache_dir: str, args: InferenceTaskArgs):
     refiner = None
 
     if args.refiner is not None:
-        refiner_init_args = get_pipeline_init_args(cache_dir)
+        refiner_init_args = get_pipeline_init_args(cache_dir, proxy=proxy)
         refiner_init_args["tokenizer_2"] = pipeline.tokenizer_2
         refiner_init_args["text_encoder_2"] = pipeline.text_encoder_2
         refiner_init_args["vae"] = pipeline.vae
@@ -141,7 +156,7 @@ def run_task(args: InferenceTaskArgs, config: Config | None = None) -> List[Imag
             config.proxy
         )
 
-    pipeline, refiner = prepare_pipeline(config.data_dir.models.huggingface, args)
+    pipeline, refiner = prepare_pipeline(config.data_dir.models.huggingface, args, config.proxy)
 
     generated_images = []
 

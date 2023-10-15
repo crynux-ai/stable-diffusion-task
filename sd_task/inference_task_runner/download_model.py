@@ -52,10 +52,13 @@ def check_and_download_model_from_url(model_name: str, cache_dir: str, proxy: Pr
             http = urllib3.PoolManager(num_pools=1)
 
         resp = http.request("GET", model_name, preload_content=False)
+        total_bytes = resp.getheader("content-length", None)
+        if total_bytes is not None:
+            total_bytes = int(total_bytes)
 
         with tqdm.wrapattr(open(model_file, "wb"), "write",
                            miniters=1, desc=model_file,
-                           total=getattr(resp, 'length', None)) as f_out:
+                           total=total_bytes) as f_out:
             for chunk in resp.stream(1024):
                 if chunk:
                     f_out.write(chunk)
