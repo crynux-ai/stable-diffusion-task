@@ -13,3 +13,7 @@ Pillow==10.0.1
 controlnet-aux==0.0.7
 diffusers==0.21.2
 compel==2.0.2
+mediapipe==0.10.7
+validators==0.22.0
+urllib3==2.0.5
+tqdm==4.66.1

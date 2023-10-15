@@ -20,7 +20,7 @@ if __name__ == '__main__':
             "safety_checker": False
         },
         "lora": {
-            "model": "korean-doll-likeness-v2-0",
+            "model": "https://civitai.com/api/download/models/31284",
             "weight": 70
         }
     }

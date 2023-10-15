@@ -17,6 +17,8 @@ from .controlnet import add_controlnet_pipeline_call_args
 from .prompt import (add_prompt_pipeline_call_args,
                      add_prompt_refiner_sdxl_call_args)
 
+from .download_model import check_and_download_model_from_url
+
 # Use deterministic algorithms for reproducibility
 os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":16:8"
 torch.backends.cudnn.benchmark = False
@@ -37,7 +39,7 @@ def get_pipeline_init_args(cache_dir: str, args: InferenceTaskArgs | None = None
     return init_args
 
 
-def prepare_pipeline(cache_dir: str, lora_dir: str, args: InferenceTaskArgs):
+def prepare_pipeline(cache_dir: str, args: InferenceTaskArgs):
     pipeline_args = get_pipeline_init_args(cache_dir, args)
 
     if args.controlnet is not None:
@@ -70,7 +72,7 @@ def prepare_pipeline(cache_dir: str, lora_dir: str, args: InferenceTaskArgs):
     if args.lora is not None:
         # raises ValueError if the lora model is not compatible with the base model
         pipeline.load_lora_weights(
-            os.path.join(lora_dir, args.lora.model),
+            args.lora.model,
             lora_scale=args.lora.weight,
             local_files_only=True,
         )
@@ -125,10 +127,22 @@ def get_pipeline_call_args(pipeline, args: InferenceTaskArgs) -> Dict[str, Any]:
 def run_task(args: InferenceTaskArgs, config: Config | None = None) -> List[Image.Image]:
     if config is None:
         config = get_config()
-    
-    cache_dir = config.data_dir.models.huggingface
-    lora_dir = config.data_dir.models.lora
-    pipeline, refiner = prepare_pipeline(cache_dir, lora_dir, args)
+
+    if args.lora is not None:
+        args.lora.model = check_and_download_model_from_url(
+            args.lora.model,
+            config.data_dir.models.lora,
+            config.proxy
+        )
+
+    if args.textual_inversion is not None:
+        args.textual_inversion = check_and_download_model_from_url(
+            args.textual_inversion,
+            config.data_dir.models.textual_inversion,
+            config.proxy
+        )
+
+    pipeline, refiner = prepare_pipeline(config.data_dir.models.huggingface, args)
 
     generated_images = []
 

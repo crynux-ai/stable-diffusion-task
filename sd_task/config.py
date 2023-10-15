@@ -11,6 +11,7 @@ from pydantic_settings_yaml import YamlBaseSettings
 class ModelsDirConfig(BaseModel):
     huggingface: str
     lora: str
+    textual_inversion: str
 
 
 class DataDirConfig(BaseModel):
@@ -28,9 +29,20 @@ class PreloadedModelsConfig(BaseModel):
     vae: List[ModelConfig] | None
 
 
+class ProxyConfig(BaseModel):
+    host: str = ""
+    port: int = 8080
+    username: str = ""
+    password: str = ""
+
+
 class Config(YamlBaseSettings):
     data_dir: DataDirConfig = DataDirConfig(
-        models=ModelsDirConfig(huggingface="models/huggingface", lora="models/lora")
+        models=ModelsDirConfig(
+            huggingface="models/huggingface",
+            lora="models/lora",
+            textual_inversion="models/textual_inversion"
+        )
     )
     preloaded_models: PreloadedModelsConfig = PreloadedModelsConfig(
         base=[
@@ -46,6 +58,7 @@ class Config(YamlBaseSettings):
         ],
         vae=[],
     )
+    proxy: ProxyConfig | None = None
 
     model_config = SettingsConfigDict(
         yaml_file=os.getenv("SD_TASK_CONFIG", "config.yml"),  # type: ignore
@@ -62,4 +75,3 @@ def get_config() -> Config:
         _default_config = Config()  # type: ignore
 
     return _default_config
-

@@ -3,6 +3,7 @@ data_dir:
   models:
     huggingface: "./models/huggingface"
     lora: "./models/lora"
+    textual_inversion: "./models/textual_inversion"
 
 preloaded_models:
   base:
@@ -17,3 +18,6 @@ preloaded_models:
     - id: "lllyasviel/control_v11p_sd15_openpose"
     - id: "diffusers/controlnet-canny-sdxl-1.0"
   vae:
+proxy:
+  host: "http://127.0.0.1"
+  port: 33210

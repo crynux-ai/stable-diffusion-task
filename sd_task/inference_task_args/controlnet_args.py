@@ -182,5 +182,6 @@ class ControlnetArgs(BaseModel):
         PreprocessMethodDepthLeres,
         PreprocessMethodDepthLeresPP,
         PreprocessMethodShuffle,
-        PreprocessMethodMediapipeFace
+        PreprocessMethodMediapipeFace,
+        None
     ] = Field(discriminator="method", default=None)
