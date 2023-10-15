@@ -10,8 +10,7 @@ from pydantic_settings_yaml import YamlBaseSettings
 
 class ModelsDirConfig(BaseModel):
     huggingface: str
-    lora: str
-    textual_inversion: str
+    external: str
 
 
 class DataDirConfig(BaseModel):

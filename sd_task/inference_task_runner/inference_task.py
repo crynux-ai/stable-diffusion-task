@@ -17,7 +17,7 @@ from .controlnet import add_controlnet_pipeline_call_args
 from .prompt import (add_prompt_pipeline_call_args,
                      add_prompt_refiner_sdxl_call_args)
 
-from .download_model import check_and_download_model_from_url
+from .download_model import check_and_prepare_models
 
 # Use deterministic algorithms for reproducibility
 os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":16:8"
@@ -25,25 +25,12 @@ torch.backends.cudnn.benchmark = False
 torch.use_deterministic_algorithms(True)
 
 
-def get_hf_proxy_dict(proxy: ProxyConfig):
-    if proxy is not None and proxy.host != "":
-
-        proxy_str = proxy.host + ":" + str(proxy.port)
-
-        return {
-            'https': proxy_str,
-            'http': proxy_str
-        }
-    else:
-        return None
-
-
-def get_pipeline_init_args(cache_dir: str, args: InferenceTaskArgs | None = None, proxy: ProxyConfig | None = None):
+def get_pipeline_init_args(cache_dir: str, args: InferenceTaskArgs | None = None):
     init_args = {
         "torch_dtype": torch.float16,
         "variant": "fp16",
         "cache_dir": cache_dir,
-        "proxies": get_hf_proxy_dict(proxy)
+        "local_files_only": True
     }
 
     if args is not None and args.task_config.safety_checker is False:
@@ -52,15 +39,15 @@ def get_pipeline_init_args(cache_dir: str, args: InferenceTaskArgs | None = None
     return init_args
 
 
-def prepare_pipeline(cache_dir: str, args: InferenceTaskArgs, proxy: ProxyConfig | None = None):
-    pipeline_args = get_pipeline_init_args(cache_dir, args, proxy)
+def prepare_pipeline(cache_dir: str, args: InferenceTaskArgs):
+    pipeline_args = get_pipeline_init_args(cache_dir, args)
 
     if args.controlnet is not None:
         controlnet_model = ControlNetModel.from_pretrained(
             args.controlnet.model,
             torch_dtype=torch.float16,
             cache_dir=cache_dir,
-            proxies=get_hf_proxy_dict(proxy)
+            local_files_only=True
         )
 
         pipeline_args["controlnet"] = controlnet_model
@@ -79,7 +66,7 @@ def prepare_pipeline(cache_dir: str, args: InferenceTaskArgs, proxy: ProxyConfig
             args.vae,
             torch_dtype=torch.float16,
             cache_dir=cache_dir,
-            proxies=get_hf_proxy_dict(proxy)
+            local_files_only=True
         ).to("cuda")
 
     if args.lora is not None:
@@ -88,14 +75,14 @@ def prepare_pipeline(cache_dir: str, args: InferenceTaskArgs, proxy: ProxyConfig
             args.lora.model,
             lora_scale=args.lora.weight,
             cache_dir=cache_dir,
-            proxies=get_hf_proxy_dict(proxy)
+            local_files_only=True
         )
 
     if args.textual_inversion != "":
         pipeline.load_textual_inversion(
             args.textual_inversion,
             cache_dir=cache_dir,
-            proxies=get_hf_proxy_dict(proxy)
+            local_files_only=True
         )
 
     pipeline = pipeline.to("cuda")
@@ -104,7 +91,7 @@ def prepare_pipeline(cache_dir: str, args: InferenceTaskArgs, proxy: ProxyConfig
     refiner = None
 
     if args.refiner is not None:
-        refiner_init_args = get_pipeline_init_args(cache_dir, proxy=proxy)
+        refiner_init_args = get_pipeline_init_args(cache_dir)
         refiner_init_args["tokenizer_2"] = pipeline.tokenizer_2
         refiner_init_args["text_encoder_2"] = pipeline.text_encoder_2
         refiner_init_args["vae"] = pipeline.vae
@@ -142,21 +129,14 @@ def run_task(args: InferenceTaskArgs, config: Config | None = None) -> List[Imag
     if config is None:
         config = get_config()
 
-    if args.lora is not None:
-        args.lora.model = check_and_download_model_from_url(
-            args.lora.model,
-            config.data_dir.models.lora,
-            config.proxy
-        )
+    check_and_prepare_models(
+        args,
+        external_model_cache_dir=config.data_dir.models.external,
+        hf_model_cache_dir=config.data_dir.models.huggingface,
+        proxy=config.proxy
+    )
 
-    if args.textual_inversion is not None:
-        args.textual_inversion = check_and_download_model_from_url(
-            args.textual_inversion,
-            config.data_dir.models.textual_inversion,
-            config.proxy
-        )
-
-    pipeline, refiner = prepare_pipeline(config.data_dir.models.huggingface, args, config.proxy)
+    pipeline, refiner = prepare_pipeline(config.data_dir.models.huggingface, args)
 
     generated_images = []
 
