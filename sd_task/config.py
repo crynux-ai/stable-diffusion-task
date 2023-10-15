@@ -39,8 +39,7 @@ class Config(YamlBaseSettings):
     data_dir: DataDirConfig = DataDirConfig(
         models=ModelsDirConfig(
             huggingface="models/huggingface",
-            lora="models/lora",
-            textual_inversion="models/textual_inversion"
+            external="models/external"
         )
     )
     preloaded_models: PreloadedModelsConfig = PreloadedModelsConfig(
