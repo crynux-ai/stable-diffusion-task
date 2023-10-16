@@ -8,13 +8,13 @@ from .types import FloatFractionAsInt, NonEmptyString
 
 class RefinerArgs(BaseModel):
     model: NonEmptyString
-    denoising_cutoff: FloatFractionAsInt = 0.8    # Not used if controlnet is enabled
+    denoising_cutoff: FloatFractionAsInt = 80    # Not used if controlnet is enabled
     steps: Annotated[int, Gt(0), Le(100)] = 20
 
 
 class LoraArgs(BaseModel):
     model: NonEmptyString
-    weight: FloatFractionAsInt = 1.0
+    weight: FloatFractionAsInt = 100
 
 
 class TaskConfig(BaseModel):

@@ -1,12 +1,13 @@
-from annotated_types import Gt, Le, MinLen
+from annotated_types import MinLen
 from pydantic.functional_serializers import PlainSerializer
-from pydantic.functional_validators import BeforeValidator
+from pydantic.functional_validators import AfterValidator
+from pydantic import WithJsonSchema, Field
 from typing_extensions import Annotated
 
 
 def fraction_int_to_float(fraction: int) -> float:
 
-    if isinstance(fraction, int):
+    if isinstance(fraction, int) or fraction > 1:
         return float(fraction) / 100.0
     else:
         return fraction
@@ -18,10 +19,11 @@ def float_to_fraction_int(fraction: float) -> int:
 
 FloatFractionAsInt = Annotated[
     float,
-    Gt(0),
-    Le(1),
-    BeforeValidator(fraction_int_to_float),
-    PlainSerializer(float_to_fraction_int, return_type=int, when_used='json')
+    Field(validate_default=True, gt=0, le=100),
+    AfterValidator(fraction_int_to_float),
+    PlainSerializer(float_to_fraction_int, return_type=int, when_used='json'),
+    WithJsonSchema({'type': 'integer', 'exclusiveMinimum': 0, 'maximum': 100}, mode='validation'),
+    WithJsonSchema({'type': 'integer', 'exclusiveMinimum': 0, 'maximum': 100}, mode='serialization')
 ]
 
 NonEmptyString = Annotated[

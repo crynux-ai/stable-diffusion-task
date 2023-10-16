@@ -36,8 +36,8 @@ class PreprocessMethodDepthMidas(BaseModel):
 
 
 class MLSDArgs(BaseModel):
-    thr_v: FloatFractionAsInt = 0.1
-    thr_d: FloatFractionAsInt = 0.1
+    thr_v: FloatFractionAsInt = 10
+    thr_d: FloatFractionAsInt = 10
 
 
 class PreprocessMethodMLSD(BaseModel):
@@ -146,7 +146,7 @@ class PreprocessMethodShuffle(BaseModel):
 
 class MediapipeFaceArgs(BaseModel):
     max_faces: int = 1
-    min_confidence: FloatFractionAsInt = 0.5
+    min_confidence: FloatFractionAsInt = 50
 
 
 class PreprocessMethodMediapipeFace(BaseModel):
@@ -157,7 +157,7 @@ class PreprocessMethodMediapipeFace(BaseModel):
 class ControlnetArgs(BaseModel):
     model: NonEmptyString
     image_dataurl: NonEmptyString
-    weight: FloatFractionAsInt = 0.5
+    weight: FloatFractionAsInt = 70
     preprocess: Union[
         PreprocessMethodCanny,
         PreprocessMethodScribbleHED,
