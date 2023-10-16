@@ -13,7 +13,7 @@ version = "0.0.1"
 dependencies = [
     "pydantic>=2.4.2",
     "pydantic-settings>=2.0.3",
-    "pydantic-settings-yaml>=0.2.0",
+    "PyYAML",
     "annotated-types>=0.6.0",
     "Pillow",
     "controlnet-aux>=0.0.7",
