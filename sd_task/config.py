@@ -1,17 +1,13 @@
 from __future__ import annotations
 
 import os
-from typing import List, Literal, Tuple, Any, Dict, Type
+from typing import Any, Dict, List, Literal, Tuple, Type
 
+import yaml
 from pydantic import BaseModel
 from pydantic.fields import FieldInfo
-from pydantic_settings import (
-    SettingsConfigDict,
-    BaseSettings,
-    PydanticBaseSettingsSource,
-)
-from pydantic_settings.main import BaseSettings
-import yaml
+from pydantic_settings import (BaseSettings, PydanticBaseSettingsSource,
+                               SettingsConfigDict)
 
 
 class YamlSettingsConfigDict(SettingsConfigDict):
@@ -120,7 +116,9 @@ class Config(BaseSettings):
     proxy: ProxyConfig | None = None
 
     model_config = YamlSettingsConfigDict(
-        env_nested_delimiter="__", yaml_file=os.getenv("SD_TASK_CONFIG", "config.yml"), env_file=".env"
+        env_nested_delimiter="__",
+        yaml_file=os.getenv("SD_TASK_CONFIG", "config.yml"),
+        env_file=".env",
     )
 
     @classmethod
