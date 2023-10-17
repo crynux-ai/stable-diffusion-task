@@ -5,6 +5,7 @@ torchaudio==2.1.0+cu118
 --extra-index-url https://download.pytorch.org/whl/cu118
 torchvision==0.16.0+cu118
 
+accelerate==0.23.0
 pydantic==2.4.2
 pydantic-settings==2.0.3
 PyYAML==5.3.1
