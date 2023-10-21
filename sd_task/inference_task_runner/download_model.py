@@ -5,10 +5,7 @@ import urllib3
 from sd_task.config import ProxyConfig
 from tqdm import tqdm
 from sd_task.inference_task_args.task_args import InferenceTaskArgs
-from diffusers import (ControlNetModel, DiffusionPipeline, AutoencoderKL)
-from diffusers.loaders import LoraLoaderMixin, load_textual_inversion_state_dicts
-from typing import Callable
-import torch
+from huggingface_hub import snapshot_download
 
 
 def check_and_prepare_models(
@@ -17,42 +14,36 @@ def check_and_prepare_models(
 
     task_args.base_model = check_and_download_model_by_name(
         task_args.base_model,
-        DiffusionPipeline.from_pretrained,
         **kwargs
     )
 
     if task_args.vae != "":
         task_args.vae = check_and_download_model_by_name(
             task_args.vae,
-            AutoencoderKL.from_pretrained,
             **kwargs
         )
 
     if task_args.controlnet is not None:
         task_args.controlnet.model = check_and_download_model_by_name(
             task_args.controlnet.model,
-            ControlNetModel.from_pretrained,
             **kwargs
         )
 
     if task_args.lora is not None:
         task_args.lora.model = check_and_download_model_by_name(
             task_args.lora.model,
-            LoraLoaderMixin.lora_state_dict,
             **kwargs
         )
 
     if task_args.textual_inversion != "":
         task_args.textual_inversion = check_and_download_model_by_name(
             task_args.textual_inversion,
-            load_textual_inversion_state_dicts,
             **kwargs
         )
 
 
 def check_and_download_model_by_name(
         model_name: str,
-        loader_fn: Callable,
         **kwargs) -> str:
     hf_model_cache_dir = kwargs.pop("hf_model_cache_dir")
     external_model_cache_dir = kwargs.pop("external_model_cache_dir")
@@ -61,7 +52,7 @@ def check_and_download_model_by_name(
     if validators.url(model_name):
         return check_and_download_external_model(model_name, external_model_cache_dir, proxy)
     else:
-        return check_and_download_hf_model(model_name, loader_fn, hf_model_cache_dir, proxy)
+        return check_and_download_hf_model(model_name, hf_model_cache_dir, proxy)
 
 
 def check_and_download_external_model(
@@ -135,20 +126,19 @@ def check_and_download_external_model(
 
 def check_and_download_hf_model(
         model_name: str,
-        loader_fn: Callable,
         hf_cache_dir: str,
         proxy: ProxyConfig | None
 ) -> str:
     print("Check and download the Huggingface model file: " + model_name)
 
     call_args = {
+        "repo_id": model_name,
         "proxies": get_hf_proxy_dict(proxy),
         "cache_dir": hf_cache_dir,
-        "torch_dtype": torch.float16,
         "resume_download": True,
     }
 
-    loader_fn(model_name, **call_args)
+    snapshot_download(**call_args)
 
     return model_name
 
