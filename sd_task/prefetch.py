@@ -26,7 +26,7 @@ def prefetch_models(config: Config | None = None):
         for model_config in config.preloaded_models.base:
             print("Preloading base model: ", model_config.id)
 
-            model_args = get_pretrained_args(model_config, config.data_dir.models.huggingface)
+            model_args = get_pretrained_args(model_config, config.data_dir.models.huggingface, config.proxy)
             snapshot_download(**model_args)
 
             print("Successfully preloaded base model: ", model_config.id)
@@ -36,7 +36,7 @@ def prefetch_models(config: Config | None = None):
         for model_config in config.preloaded_models.controlnet:
             print("Preloading controlnet model: ", model_config.id)
 
-            model_args = get_pretrained_args(model_config, config.data_dir.models.huggingface)
+            model_args = get_pretrained_args(model_config, config.data_dir.models.huggingface, config.proxy)
             snapshot_download(**model_args)
 
             print("Successfully preloaded controlnet model: ", model_config.id)
@@ -46,7 +46,7 @@ def prefetch_models(config: Config | None = None):
         for model_config in config.preloaded_models.vae:
             print("Preloading vae model: ", model_config.id)
 
-            model_args = get_pretrained_args(model_config, config.data_dir.models.huggingface)
+            model_args = get_pretrained_args(model_config, config.data_dir.models.huggingface, config.proxy)
             snapshot_download(**model_args)
 
             print("Successfully preloaded vae model: ", model_config)

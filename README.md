@@ -42,3 +42,8 @@ Check and run the examples:
 ### Task Definition
 
 The complete task definition can be found in the file [```./sd_task/inference_task_args/task_args.py```](sd_task/inference_task_args/task_args.py)
+
+### JSON Schema
+
+The JSON schemas for the tasks could be used to validate the task arguments by other projects.
+The schemas are given under [```./schema```](./schema). Projects could use the URL to load the JSON schema files directly.
