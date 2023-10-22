@@ -2,17 +2,25 @@ import validators
 import hashlib
 import os
 import urllib3
+from diffusers.utils import SAFETENSORS_WEIGHTS_NAME, WEIGHTS_NAME
+from diffusers.loaders import LORA_WEIGHT_NAME_SAFE, LORA_WEIGHT_NAME, TEXT_INVERSION_NAME_SAFE, TEXT_INVERSION_NAME
+from diffusers.loaders import LoraLoaderMixin
+from diffusers import DiffusionPipeline
+
 from sd_task.config import ProxyConfig
 from tqdm import tqdm
 from sd_task.inference_task_args.task_args import InferenceTaskArgs
-from huggingface_hub import snapshot_download
+from huggingface_hub import hf_hub_download, model_info
+from huggingface_hub.utils import EntryNotFoundError
+from typing import Callable, Union
+from diffusers import AutoencoderKL, ControlNetModel
 
 
 def check_and_prepare_models(
         task_args: InferenceTaskArgs,
         **kwargs):
 
-    task_args.base_model = check_and_download_model_by_name(
+    task_args.base_model = check_and_download_hf_pipeline(
         task_args.base_model,
         **kwargs
     )
@@ -20,30 +28,45 @@ def check_and_prepare_models(
     if task_args.vae != "":
         task_args.vae = check_and_download_model_by_name(
             task_args.vae,
+            AutoencoderKL.load_config,
+            [SAFETENSORS_WEIGHTS_NAME, WEIGHTS_NAME],
+            False,
             **kwargs
         )
 
     if task_args.controlnet is not None:
         task_args.controlnet.model = check_and_download_model_by_name(
             task_args.controlnet.model,
+            ControlNetModel.load_config,
+            [SAFETENSORS_WEIGHTS_NAME, WEIGHTS_NAME],
+            False,
             **kwargs
         )
 
     if task_args.lora is not None:
         task_args.lora.model = check_and_download_model_by_name(
             task_args.lora.model,
+            None,
+            [LORA_WEIGHT_NAME_SAFE, LORA_WEIGHT_NAME],
+            True,
             **kwargs
         )
 
     if task_args.textual_inversion != "":
         task_args.textual_inversion = check_and_download_model_by_name(
             task_args.textual_inversion,
+            None,
+            [TEXT_INVERSION_NAME_SAFE, TEXT_INVERSION_NAME],
+            True,
             **kwargs
         )
 
 
 def check_and_download_model_by_name(
         model_name: str,
+        loader: Union[Callable, None],
+        weights_names: list[str],
+        guess_weights_name: bool,
         **kwargs) -> str:
     hf_model_cache_dir = kwargs.pop("hf_model_cache_dir")
     external_model_cache_dir = kwargs.pop("external_model_cache_dir")
@@ -52,7 +75,13 @@ def check_and_download_model_by_name(
     if validators.url(model_name):
         return check_and_download_external_model(model_name, external_model_cache_dir, proxy)
     else:
-        return check_and_download_hf_model(model_name, hf_model_cache_dir, proxy)
+        return check_and_download_hf_model(
+            model_name,
+            loader,
+            weights_names,
+            guess_weights_name,
+            hf_model_cache_dir,
+            proxy)
 
 
 def check_and_download_external_model(
@@ -124,21 +153,82 @@ def check_and_download_external_model(
         raise e
 
 
+def check_and_download_hf_pipeline(
+    model_name: str,
+    **kwargs
+) -> str:
+    print("Check and download the Huggingface pipeline: " + model_name)
+
+    hf_model_cache_dir = kwargs.pop("hf_model_cache_dir")
+    proxy = kwargs.pop("proxy")
+
+    call_args = {
+        "cache_dir": hf_model_cache_dir,
+        "proxies": get_hf_proxy_dict(proxy),
+        "resume_download": True
+    }
+    DiffusionPipeline.download(model_name, **call_args)
+    return model_name
+
+
 def check_and_download_hf_model(
         model_name: str,
-        hf_cache_dir: str,
+        config_loader: Union[Callable, None],
+        weights_names: list[str],
+        guess_weight_name: bool,
+        hf_model_cache_dir: str,
         proxy: ProxyConfig | None
+
 ) -> str:
     print("Check and download the Huggingface model file: " + model_name)
 
     call_args = {
-        "repo_id": model_name,
+        "cache_dir": hf_model_cache_dir,
         "proxies": get_hf_proxy_dict(proxy),
-        "cache_dir": hf_cache_dir,
-        "resume_download": True,
+        "resume_download": True
     }
 
-    snapshot_download(**call_args)
+    # download the config file
+    if config_loader is not None:
+        config_loader(model_name, **call_args)
+
+    model_file = None
+
+    for weights_name in weights_names:
+        if model_file is None:
+            try:
+                call_args["filename"] = add_variant(weights_name, "fp16")
+                model_file = hf_hub_download(model_name, **call_args)
+            except EntryNotFoundError:
+                pass
+
+    if model_file is None:
+        for idx, weights_name in enumerate(weights_names):
+
+            if model_file is None:
+
+                call_args["filename"] = weights_name
+
+                if (not guess_weight_name) and idx == len(weights_names) - 1:
+                    model_file = hf_hub_download(model_name, **call_args)
+                else:
+                    try:
+                        model_file = hf_hub_download(model_name, **call_args)
+                    except EntryNotFoundError:
+                        pass
+
+    if model_file is None and guess_weight_name:
+        weight_name = best_guess_weight_name(model_name, file_extension=".safetensors")
+        if weight_name is None:
+            weight_name = best_guess_weight_name(model_name, file_extension=".bin")
+
+        if weight_name is None:
+            # To raise the same EntryNotFound Error
+            hf_hub_download(model_name, **call_args)
+            return model_name
+
+        call_args["filename"] = weight_name
+        hf_hub_download(model_name, **call_args)
 
     return model_name
 
@@ -154,3 +244,33 @@ def get_hf_proxy_dict(proxy: ProxyConfig | None) -> dict | None:
         }
     else:
         return None
+
+
+def add_variant(weights_name: str, variant: str | None = None) -> str:
+    if variant is not None:
+        splits = weights_name.split(".")
+        splits = splits[:-1] + [variant] + splits[-1:]
+        weights_name = ".".join(splits)
+
+    return weights_name
+
+
+def best_guess_weight_name(pretrained_model_name_or_path_or_dict, file_extension=".safetensors") -> str | None:
+
+    files_in_repo = model_info(pretrained_model_name_or_path_or_dict).siblings
+    targeted_files = [f.rfilename for f in files_in_repo if f.rfilename.endswith(file_extension)]
+
+    if len(targeted_files) == 0:
+        return
+
+    unallowed_substrings = {"scheduler", "optimizer", "checkpoint"}
+    targeted_files = list(
+        filter(lambda x: all(substring not in x for substring in unallowed_substrings), targeted_files)
+    )
+
+    if len(targeted_files) > 1:
+        raise ValueError(
+            f"Provided path contains more than one weights file in the {file_extension} format. Either specify `weight_name` in `load_lora_weights` or make sure there's only one  `.safetensors` or `.bin` file in  {pretrained_model_name_or_path_or_dict}."
+        )
+    weight_name = targeted_files[0]
+    return weight_name

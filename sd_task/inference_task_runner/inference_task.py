@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import math
 import os
 from typing import List, Dict, Any
@@ -45,14 +43,27 @@ def prepare_pipeline(cache_dir: str, args: InferenceTaskArgs):
     pipeline_args = get_pipeline_init_args(cache_dir, args)
 
     if args.controlnet is not None:
-        controlnet_model = ControlNetModel.from_pretrained(
-            args.controlnet.model,
-            torch_dtype=torch.float16,
-            cache_dir=cache_dir,
-            local_files_only=True
-        )
+        controlnet_model = None
+        try:
+            controlnet_model = ControlNetModel.from_pretrained(
+                args.controlnet.model,
+                torch_dtype=torch.float16,
+                cache_dir=cache_dir,
+                variant="fp16",
+                local_files_only=True
+            )
+        except EnvironmentError:
+            pass
 
-        pipeline_args["controlnet"] = controlnet_model
+        if controlnet_model is None:
+            controlnet_model = ControlNetModel.from_pretrained(
+                args.controlnet.model,
+                torch_dtype=torch.float16,
+                cache_dir=cache_dir,
+                local_files_only=True
+            )
+
+        pipeline_args["controlnet"] = controlnet_model.to("cuda")
 
     pipeline = AutoPipelineForText2Image.from_pretrained(
         args.base_model, **pipeline_args
@@ -64,12 +75,27 @@ def prepare_pipeline(cache_dir: str, args: InferenceTaskArgs):
     )
 
     if args.vae != "":
-        pipeline.vae = AutoencoderKL.from_pretrained(
-            args.vae,
-            torch_dtype=torch.float16,
-            cache_dir=cache_dir,
-            local_files_only=True
-        ).to("cuda")
+        vae_model = None
+        try:
+            vae_model = AutoencoderKL.from_pretrained(
+                args.vae,
+                torch_dtype=torch.float16,
+                cache_dir=cache_dir,
+                local_files_only=True,
+                variant="fp16",
+            )
+        except EnvironmentError:
+            pass
+
+        if vae_model is None:
+            vae_model = AutoencoderKL.from_pretrained(
+                args.vae,
+                torch_dtype=torch.float16,
+                cache_dir=cache_dir,
+                local_files_only=True,
+            )
+
+        pipeline.vae = vae_model.to("cuda")
 
     if args.lora is not None:
         # raises ValueError if the lora model is not compatible with the base model

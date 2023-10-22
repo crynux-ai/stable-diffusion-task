@@ -1,20 +1,7 @@
-from __future__ import annotations
-
-from sd_task.config import Config, ModelConfig, ProxyConfig, get_config
-from huggingface_hub import snapshot_download
-
-
-def get_pretrained_args(model_config: ModelConfig, cache_dir: str, proxy: ProxyConfig | None = None):
-    args = {
-        "repo_id": model_config.id,
-        "resume_download": True,
-        "cache_dir": cache_dir
-    }
-
-    if proxy is not None:
-        args["proxies"] = get_hf_proxy_dict(proxy)
-
-    return args
+from sd_task.config import Config, get_config
+from sd_task.inference_task_runner.download_model import check_and_download_hf_model, check_and_download_hf_pipeline
+from diffusers import ControlNetModel, AutoencoderKL
+from diffusers.utils import SAFETENSORS_WEIGHTS_NAME, WEIGHTS_NAME
 
 
 def prefetch_models(config: Config | None = None):
@@ -26,43 +13,41 @@ def prefetch_models(config: Config | None = None):
         for model_config in config.preloaded_models.base:
             print("Preloading base model: ", model_config.id)
 
-            model_args = get_pretrained_args(model_config, config.data_dir.models.huggingface, config.proxy)
-            snapshot_download(**model_args)
+            call_args = {
+                "hf_model_cache_dir": config.data_dir.models.huggingface,
+                "proxy": config.proxy
+            }
 
+            check_and_download_hf_pipeline(model_config.id, **call_args)
             print("Successfully preloaded base model: ", model_config.id)
 
     # controlnet models
     if config.preloaded_models.controlnet is not None:
         for model_config in config.preloaded_models.controlnet:
             print("Preloading controlnet model: ", model_config.id)
-
-            model_args = get_pretrained_args(model_config, config.data_dir.models.huggingface, config.proxy)
-            snapshot_download(**model_args)
-
+            check_and_download_hf_model(
+                model_config.id,
+                ControlNetModel.load_config,
+                [SAFETENSORS_WEIGHTS_NAME, WEIGHTS_NAME],
+                False,
+                config.data_dir.models.huggingface,
+                config.proxy
+            )
             print("Successfully preloaded controlnet model: ", model_config.id)
 
     # vae models
     if config.preloaded_models.vae is not None:
         for model_config in config.preloaded_models.vae:
             print("Preloading vae model: ", model_config.id)
-
-            model_args = get_pretrained_args(model_config, config.data_dir.models.huggingface, config.proxy)
-            snapshot_download(**model_args)
-
+            check_and_download_hf_model(
+                model_config.id,
+                AutoencoderKL.load_config,
+                [SAFETENSORS_WEIGHTS_NAME, WEIGHTS_NAME],
+                False,
+                config.data_dir.models.huggingface,
+                config.proxy
+            )
             print("Successfully preloaded vae model: ", model_config)
-
-
-def get_hf_proxy_dict(proxy: ProxyConfig | None) -> dict | None:
-    if proxy is not None and proxy.host != "":
-
-        proxy_str = proxy.host + ":" + str(proxy.port)
-
-        return {
-            'https': proxy_str,
-            'http': proxy_str
-        }
-    else:
-        return None
 
 
 if __name__ == "__main__":
