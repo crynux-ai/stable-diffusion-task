@@ -170,7 +170,8 @@ def check_and_download_hf_pipeline(
     call_args = {
         "cache_dir": hf_model_cache_dir,
         "proxies": get_hf_proxy_dict(proxy),
-        "resume_download": True
+        "resume_download": True,
+        "variant": "fp16",
     }
     DiffusionPipeline.download(model_name, **call_args)
     return model_name
