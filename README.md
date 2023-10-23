@@ -14,6 +14,7 @@ A general framework to define and execute the Stable Diffusion task.
 * Long prompt
 * Prompt weighting using [Compel](https://github.com/damian0815/compel)
 * Maximized reproducibility
+* Auto LoRA and Textual Inversion model downloading from non-huggingface URL
 
 
 ### Get started

@@ -22,7 +22,7 @@ if __name__ == '__main__':
             "steps": 30
         },
         "lora": {
-            "model": "stillsuit-sdxl"
+            "model": "https://civitai.com/api/download/models/178048"
         },
         "controlnet": {
             "model": "diffusers/controlnet-canny-sdxl-1.0",

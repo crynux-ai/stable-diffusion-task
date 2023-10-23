@@ -4,7 +4,6 @@ import os
 import urllib3
 from diffusers.utils import SAFETENSORS_WEIGHTS_NAME, WEIGHTS_NAME
 from diffusers.loaders import LORA_WEIGHT_NAME_SAFE, LORA_WEIGHT_NAME, TEXT_INVERSION_NAME_SAFE, TEXT_INVERSION_NAME
-from diffusers.loaders import LoraLoaderMixin
 from diffusers import DiffusionPipeline
 
 from sd_task.config import ProxyConfig
@@ -24,6 +23,12 @@ def check_and_prepare_models(
         task_args.base_model,
         **kwargs
     )
+
+    if task_args.refiner is not None and task_args.refiner.model != "":
+        task_args.refiner.model = check_and_download_hf_pipeline(
+            task_args.refiner.model,
+            **kwargs
+        )
 
     if task_args.vae != "":
         task_args.vae = check_and_download_model_by_name(
