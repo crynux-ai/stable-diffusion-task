@@ -120,7 +120,7 @@ def check_and_download_external_model(
     print("Model file not cached locally. Start the download...")
 
     try:
-        if proxy.host != "":
+        if proxy is not None and proxy.host != "":
             proxy_str = proxy.host + ":" + str(proxy.port)
 
             print("Download using proxy: " + proxy_str)
