@@ -1,5 +1,5 @@
 import os
-from typing import Any, Dict, List, Literal, Tuple, Type
+from typing import Any, Dict, List, Tuple, Type
 
 import yaml
 from pydantic import BaseModel
@@ -73,7 +73,6 @@ class DataDirConfig(BaseModel):
 
 class ModelConfig(BaseModel):
     id: str
-    variant: Literal["fp16", "ema"] | None = None
 
 
 class PreloadedModelsConfig(BaseModel):
@@ -99,10 +98,9 @@ class Config(BaseSettings):
         base=[
             ModelConfig(id="runwayml/stable-diffusion-v1-5"),
             ModelConfig(id="emilianJR/chilloutmix_NiPrunedFp32Fix"),
-            ModelConfig(id="stabilityai/stable-diffusion-xl-base-1.0", variant="fp16"),
+            ModelConfig(id="stabilityai/stable-diffusion-xl-base-1.0"),
             ModelConfig(
-                id="stabilityai/stable-diffusion-xl-refiner-1.0", variant="fp16"
-            ),
+                id="stabilityai/stable-diffusion-xl-refiner-1.0"),
         ],
         controlnet=[
             ModelConfig(id="lllyasviel/sd-controlnet-canny"),
