@@ -3,24 +3,24 @@ from sd_task.inference_task_args.task_args import InferenceTaskArgs
 from diffusers.utils import make_image_grid
 
 if __name__ == '__main__':
-    prompt = ("best quality, ultra high res, photorealistic++++, 1girl, off-shoulder sweater, smiling, "
-              "faded ash gray messy bun hair+, border light, depth of field, looking at "
-              "viewer, closeup")
+    prompt = ("a realistic photo of an old man sitting on a brown chair, on the seaside, with blue sky and white "
+              "clouds, a dog is lying under his legs, masterpiece, high resolution")
 
-    negative_prompt = ("paintings, sketches, worst quality+++++, low quality+++++, normal quality+++++, lowres, "
-                       "normal quality, monochrome++, grayscale++, skin spots, acnes, skin blemishes, "
-                       "age spot, glans")
+    negative_prompt = ""
 
     args = {
         "base_model": "runwayml/stable-diffusion-v1-5",
         "prompt": prompt,
         "negative_prompt": negative_prompt,
         "task_config": {
-            "num_images": 9,
-            "safety_checker": False
+            "num_images": 6,
+            "safety_checker": False,
+            "cfg": 7,
+            "seed": 99325890022,
+            "steps": 40
         }
     }
 
     images = run_task(InferenceTaskArgs.model_validate(args))
-    image_grid = make_image_grid(images, 3, 3)
+    image_grid = make_image_grid(images, 2, 3)
     image_grid.save("./data/sd15.png")

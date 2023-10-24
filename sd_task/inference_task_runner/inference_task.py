@@ -136,6 +136,9 @@ def get_pipeline_call_args(pipeline, args: InferenceTaskArgs) -> Dict[str, Any]:
         "width": args.task_config.image_width,
         "height": args.task_config.image_height,
         "guidance_scale": args.task_config.cfg,
+
+        # generator on CPU for reproducibility
+        "generator": torch.Generator(device="cpu").manual_seed(args.task_config.seed)
     }
 
     add_prompt_pipeline_call_args(call_args, pipeline, args)
@@ -173,27 +176,24 @@ def run_task(args: InferenceTaskArgs, config: Config | None = None) -> List[Imag
         generated_images = []
 
         call_args = get_pipeline_call_args(pipeline, args)
-        refiner_call_args = {}
+
+        refiner_call_args = {
+            "generator": call_args["generator"]
+        }
 
         if args.refiner is not None and refiner is not None:
             add_prompt_refiner_sdxl_call_args(refiner_call_args, refiner, args)
-            refiner_call_args["num_inference_steps"] = math.ceil(args.refiner.steps)
+            refiner_call_args["num_inference_steps"] = args.refiner.steps
 
             # denoising_end is not supported by StableDiffusionXLControlNetPipeline yet.
             if args.controlnet is None:
                 refiner_call_args["denoising_start"] = args.refiner.denoising_cutoff
 
         for i in range(args.task_config.num_images):
-            current_seed = args.task_config.seed + i * 3000
-
-            # generator on CPU for reproducibility
-            call_args["generator"] = torch.manual_seed(current_seed)
-
             image = pipeline(**call_args)
 
             if refiner is not None:
                 refiner_call_args["image"] = image.images
-                refiner_call_args["generator"] = torch.manual_seed(current_seed)
                 image = refiner(**refiner_call_args)
 
             generated_images.append(image.images[0])
