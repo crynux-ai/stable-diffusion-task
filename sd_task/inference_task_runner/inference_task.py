@@ -1,4 +1,5 @@
-import math
+import random
+import numpy as np
 import os
 from typing import List, Dict, Any
 
@@ -169,6 +170,10 @@ def run_task(args: InferenceTaskArgs, config: Config | None = None) -> List[Imag
         )
     except Exception as e:
         raise ModelDownloadError() from e
+
+    torch.manual_seed(args.task_config.seed)
+    random.seed(args.task_config.seed)
+    np.random.seed(args.task_config.seed)
 
     try:
         pipeline, refiner = prepare_pipeline(config.data_dir.models.huggingface, args)

@@ -13,14 +13,14 @@ if __name__ == '__main__':
         "prompt": prompt,
         "negative_prompt": negative_prompt,
         "task_config": {
-            "num_images": 6,
+            "num_images": 9,
             "safety_checker": False,
             "cfg": 7,
-            "seed": 99325890022,
+            "seed": 99975892,
             "steps": 40
         }
     }
 
     images = run_task(InferenceTaskArgs.model_validate(args))
-    image_grid = make_image_grid(images, 2, 3)
+    image_grid = make_image_grid(images, 3, 3)
     image_grid.save("./data/sd15.png")
