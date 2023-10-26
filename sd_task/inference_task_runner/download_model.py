@@ -137,6 +137,10 @@ def check_and_download_external_model(
             http = urllib3.PoolManager(num_pools=1)
 
         resp = http.request("GET", model_name, preload_content=False)
+
+        if resp.status == 404:
+            raise ValueError("Model not exist")
+
         total_bytes = resp.getheader("content-length", None)
         if total_bytes is not None:
             total_bytes = int(total_bytes)
