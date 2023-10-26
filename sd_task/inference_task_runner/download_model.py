@@ -1,7 +1,7 @@
 import validators
 import hashlib
 import os
-import urllib3
+import requests
 from diffusers.utils import SAFETENSORS_WEIGHTS_NAME, WEIGHTS_NAME
 from diffusers.loaders import LORA_WEIGHT_NAME_SAFE, LORA_WEIGHT_NAME, TEXT_INVERSION_NAME_SAFE, TEXT_INVERSION_NAME
 from diffusers import DiffusionPipeline
@@ -120,35 +120,21 @@ def check_and_download_external_model(
     print("Model file not cached locally. Start the download...")
 
     try:
-        if proxy is not None and proxy.host != "":
-            proxy_str = proxy.host + ":" + str(proxy.port)
+        resp = requests.get(
+            model_name,
+            stream=True,
+            timeout=5,
+            proxies=get_requests_proxy_dict(proxy)
+        )
 
-            print("Download using proxy: " + proxy_str)
+        resp.raise_for_status()
 
-            default_headers = None
-            if proxy.username != "" and proxy.password != "":
-                default_headers = urllib3.make_headers(proxy_basic_auth=proxy.username + ':' + proxy.password)
-            http = urllib3.ProxyManager(
-                proxy_str,
-                proxy_headers=default_headers,
-                num_pools=1
-            )
-        else:
-            http = urllib3.PoolManager(num_pools=1)
-
-        resp = http.request("GET", model_name, preload_content=False)
-
-        if resp.status == 404:
-            raise ValueError("Model not exist")
-
-        total_bytes = resp.getheader("content-length", None)
-        if total_bytes is not None:
-            total_bytes = int(total_bytes)
+        total_bytes = int(resp.headers.get('content-length', 0))
 
         with tqdm.wrapattr(open(model_file, "wb"), "write",
                            miniters=1, desc=model_file,
                            total=total_bytes) as f_out:
-            for chunk in resp.stream(1024):
+            for chunk in resp.iter_content(chunk_size=1024):
                 if chunk:
                     f_out.write(chunk)
             f_out.flush()
@@ -173,7 +159,7 @@ def check_and_download_hf_pipeline(
 
     call_args = {
         "cache_dir": hf_model_cache_dir,
-        "proxies": get_hf_proxy_dict(proxy),
+        "proxies": get_requests_proxy_dict(proxy),
         "resume_download": True,
         "variant": "fp16",
     }
@@ -194,7 +180,7 @@ def check_and_download_hf_model(
 
     call_args = {
         "cache_dir": hf_model_cache_dir,
-        "proxies": get_hf_proxy_dict(proxy),
+        "proxies": get_requests_proxy_dict(proxy),
         "resume_download": True
     }
 
@@ -243,7 +229,7 @@ def check_and_download_hf_model(
     return model_name
 
 
-def get_hf_proxy_dict(proxy: ProxyConfig | None) -> dict | None:
+def get_requests_proxy_dict(proxy: ProxyConfig | None) -> dict | None:
     if proxy is not None and proxy.host != "":
 
         proxy_str = proxy.host + ":" + str(proxy.port)
