@@ -20,6 +20,8 @@ from .download_model import check_and_prepare_models
 
 from .errors import TaskExecutionError, ModelDownloadError
 
+from .log import log
+
 # Use deterministic algorithms for reproducibility
 os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":16:8"
 torch.backends.cudnn.benchmark = False
@@ -158,9 +160,13 @@ def get_pipeline_call_args(pipeline, args: InferenceTaskArgs) -> Dict[str, Any]:
 
 
 def run_task(args: InferenceTaskArgs, config: Config | None = None) -> List[Image.Image]:
+
     if config is None:
         config = get_config()
 
+    log("Task is started")
+
+    log("Check the model cache and download the models")
     try:
         check_and_prepare_models(
             args,
@@ -171,11 +177,14 @@ def run_task(args: InferenceTaskArgs, config: Config | None = None) -> List[Imag
     except Exception as e:
         raise ModelDownloadError() from e
 
+    log("All the required models are downloaded")
+
     torch.manual_seed(args.task_config.seed)
     random.seed(args.task_config.seed)
     np.random.seed(args.task_config.seed)
 
     try:
+        log("Start loading the pipeline")
         pipeline, refiner = prepare_pipeline(config.data_dir.models.huggingface, args)
 
         generated_images = []
@@ -194,6 +203,9 @@ def run_task(args: InferenceTaskArgs, config: Config | None = None) -> List[Imag
             if args.controlnet is None:
                 refiner_call_args["denoising_start"] = args.refiner.denoising_cutoff
 
+        log("The pipeline has been successfully loaded")
+
+        log("The images generation is started")
         for i in range(args.task_config.num_images):
             image = pipeline(**call_args)
 
@@ -202,6 +214,8 @@ def run_task(args: InferenceTaskArgs, config: Config | None = None) -> List[Imag
                 image = refiner(**refiner_call_args)
 
             generated_images.append(image.images[0])
+
+        log("The images generation is finished")
 
         return generated_images
     except Exception as e:
