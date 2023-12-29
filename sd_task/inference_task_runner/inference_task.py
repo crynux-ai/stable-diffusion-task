@@ -218,5 +218,7 @@ def run_task(args: InferenceTaskArgs, config: Config | None = None) -> List[Imag
         log("The images generation is finished")
 
         return generated_images
+    except torch.cuda.OutOfMemoryError:
+        raise
     except Exception as e:
         raise TaskExecutionError() from e
