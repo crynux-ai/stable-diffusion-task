@@ -1,24 +1,22 @@
-import random
-import numpy as np
 import os
-from typing import List, Dict, Any
+import random
+from typing import Any, Dict, List
 
+import numpy as np
 import torch
 from diffusers import (AutoencoderKL, AutoPipelineForText2Image,
                        ControlNetModel, DiffusionPipeline,
                        DPMSolverMultistepScheduler)
 from PIL import Image
 
-from sd_task.config import get_config, Config
+from sd_task.config import Config, get_config
 from sd_task.inference_task_args.task_args import InferenceTaskArgs
 
 from .controlnet import add_controlnet_pipeline_call_args
+from .download_model import check_and_prepare_models
+from .errors import wrap_download_error, wrap_execution_error
 from .prompt import (add_prompt_pipeline_call_args,
                      add_prompt_refiner_sdxl_call_args)
-
-from .download_model import check_and_prepare_models
-
-from .errors import TaskExecutionError, ModelDownloadError
 
 # Use deterministic algorithms for reproducibility
 os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":16:8"
@@ -31,7 +29,7 @@ def get_pipeline_init_args(cache_dir: str, args: InferenceTaskArgs | None = None
         "torch_dtype": torch.float16,
         "variant": "fp16",
         "cache_dir": cache_dir,
-        "local_files_only": True
+        "local_files_only": True,
     }
 
     if args is not None and args.task_config.safety_checker is False:
@@ -51,7 +49,7 @@ def prepare_pipeline(cache_dir: str, args: InferenceTaskArgs):
                 torch_dtype=torch.float16,
                 cache_dir=cache_dir,
                 variant="fp16",
-                local_files_only=True
+                local_files_only=True,
             )
         except EnvironmentError:
             pass
@@ -61,7 +59,7 @@ def prepare_pipeline(cache_dir: str, args: InferenceTaskArgs):
                 args.controlnet.model,
                 torch_dtype=torch.float16,
                 cache_dir=cache_dir,
-                local_files_only=True
+                local_files_only=True,
             )
 
         pipeline_args["controlnet"] = controlnet_model.to("cuda")
@@ -104,14 +102,12 @@ def prepare_pipeline(cache_dir: str, args: InferenceTaskArgs):
             args.lora.model,
             lora_scale=args.lora.weight,
             cache_dir=cache_dir,
-            local_files_only=True
+            local_files_only=True,
         )
 
     if args.textual_inversion != "":
         pipeline.load_textual_inversion(
-            args.textual_inversion,
-            cache_dir=cache_dir,
-            local_files_only=True
+            args.textual_inversion, cache_dir=cache_dir, local_files_only=True
         )
 
     pipeline = pipeline.to("cuda")
@@ -137,9 +133,8 @@ def get_pipeline_call_args(pipeline, args: InferenceTaskArgs) -> Dict[str, Any]:
         "width": args.task_config.image_width,
         "height": args.task_config.image_height,
         "guidance_scale": args.task_config.cfg,
-
         # generator on CPU for reproducibility
-        "generator": torch.Generator(device="cpu").manual_seed(args.task_config.seed)
+        "generator": torch.Generator(device="cpu").manual_seed(args.task_config.seed),
     }
 
     add_prompt_pipeline_call_args(call_args, pipeline, args)
@@ -157,34 +152,32 @@ def get_pipeline_call_args(pipeline, args: InferenceTaskArgs) -> Dict[str, Any]:
     return call_args
 
 
-def run_task(args: InferenceTaskArgs, config: Config | None = None) -> List[Image.Image]:
+def run_task(
+    args: InferenceTaskArgs, config: Config | None = None
+) -> List[Image.Image]:
     if config is None:
         config = get_config()
 
-    try:
+    with wrap_download_error():
         check_and_prepare_models(
             args,
             external_model_cache_dir=config.data_dir.models.external,
             hf_model_cache_dir=config.data_dir.models.huggingface,
-            proxy=config.proxy
+            proxy=config.proxy,
         )
-    except Exception as e:
-        raise ModelDownloadError() from e
 
     torch.manual_seed(args.task_config.seed)
     random.seed(args.task_config.seed)
     np.random.seed(args.task_config.seed)
 
-    try:
+    with wrap_execution_error():
         pipeline, refiner = prepare_pipeline(config.data_dir.models.huggingface, args)
 
         generated_images = []
 
         call_args = get_pipeline_call_args(pipeline, args)
 
-        refiner_call_args = {
-            "generator": call_args["generator"]
-        }
+        refiner_call_args = {"generator": call_args["generator"]}
 
         if args.refiner is not None and refiner is not None:
             add_prompt_refiner_sdxl_call_args(refiner_call_args, refiner, args)
@@ -204,12 +197,3 @@ def run_task(args: InferenceTaskArgs, config: Config | None = None) -> List[Imag
             generated_images.append(image.images[0])
 
         return generated_images
-    except torch.cuda.OutOfMemoryError:
-        raise
-    except RuntimeError as e:
-        if "out of memory" in str(e):
-            raise
-        else:
-            raise TaskExecutionError() from e
-    except Exception as e:
-        raise TaskExecutionError() from e
