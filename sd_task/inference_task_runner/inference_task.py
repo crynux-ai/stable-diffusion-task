@@ -15,6 +15,7 @@ from sd_task.inference_task_args.task_args import InferenceTaskArgs
 from .controlnet import add_controlnet_pipeline_call_args
 from .download_model import check_and_prepare_models
 from .errors import wrap_download_error, wrap_execution_error
+from .log import log
 from .prompt import (add_prompt_pipeline_call_args,
                      add_prompt_refiner_sdxl_call_args)
 
@@ -158,6 +159,10 @@ def run_task(
     if config is None:
         config = get_config()
 
+    log("Task is started")
+
+    log("Check the model cache and download the models")
+
     with wrap_download_error():
         check_and_prepare_models(
             args,
@@ -165,6 +170,8 @@ def run_task(
             hf_model_cache_dir=config.data_dir.models.huggingface,
             proxy=config.proxy,
         )
+
+    log("All the required models are downloaded")
 
     torch.manual_seed(args.task_config.seed)
     random.seed(args.task_config.seed)
@@ -187,6 +194,9 @@ def run_task(
             if args.controlnet is None:
                 refiner_call_args["denoising_start"] = args.refiner.denoising_cutoff
 
+        log("The pipeline has been successfully loaded")
+
+        log("The images generation is started")
         for i in range(args.task_config.num_images):
             image = pipeline(**call_args)
 
@@ -195,5 +205,7 @@ def run_task(
                 image = refiner(**refiner_call_args)
 
             generated_images.append(image.images[0])
+
+        log("The images generation is finished")
 
         return generated_images

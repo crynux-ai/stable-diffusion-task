@@ -2,6 +2,7 @@ from sd_task.config import Config, get_config
 from sd_task.inference_task_runner.download_model import check_and_download_hf_model, check_and_download_hf_pipeline
 from diffusers import ControlNetModel, AutoencoderKL
 from diffusers.utils import SAFETENSORS_WEIGHTS_NAME, WEIGHTS_NAME
+from sd_task.inference_task_runner.log import log
 
 
 def prefetch_models(config: Config | None = None):
@@ -11,7 +12,7 @@ def prefetch_models(config: Config | None = None):
     # base models
     if config.preloaded_models.base is not None:
         for model_config in config.preloaded_models.base:
-            print("Preloading base model: ", model_config.id)
+            log("Preloading base model: " + model_config.id)
 
             call_args = {
                 "hf_model_cache_dir": config.data_dir.models.huggingface,
@@ -19,12 +20,12 @@ def prefetch_models(config: Config | None = None):
             }
 
             check_and_download_hf_pipeline(model_config.id, **call_args)
-            print("Successfully preloaded base model: ", model_config.id)
+            log("Successfully preloaded base model: " + model_config.id)
 
     # controlnet models
     if config.preloaded_models.controlnet is not None:
         for model_config in config.preloaded_models.controlnet:
-            print("Preloading controlnet model: ", model_config.id)
+            log("Preloading controlnet model: " + model_config.id)
             check_and_download_hf_model(
                 model_config.id,
                 ControlNetModel.load_config,
@@ -33,12 +34,12 @@ def prefetch_models(config: Config | None = None):
                 config.data_dir.models.huggingface,
                 config.proxy
             )
-            print("Successfully preloaded controlnet model: ", model_config.id)
+            log("Successfully preloaded controlnet model: " + model_config.id)
 
     # vae models
     if config.preloaded_models.vae is not None:
         for model_config in config.preloaded_models.vae:
-            print("Preloading vae model: ", model_config.id)
+            log("Preloading vae model: " + model_config.id)
             check_and_download_hf_model(
                 model_config.id,
                 AutoencoderKL.load_config,
@@ -47,7 +48,7 @@ def prefetch_models(config: Config | None = None):
                 config.data_dir.models.huggingface,
                 config.proxy
             )
-            print("Successfully preloaded vae model: ", model_config)
+            log("Successfully preloaded vae model: " + model_config.id)
 
 
 if __name__ == "__main__":

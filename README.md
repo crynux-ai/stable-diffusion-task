@@ -40,6 +40,10 @@ Check and run the examples:
 (venv) $ python ./examples/sd15_controlnet_openpose.py
 ```
 
+More explanations can be found in the doc:
+
+[https://docs.crynux.ai/application-development/stable-diffusion-task](https://docs.crynux.ai/application-development/stable-diffusion-task)
+
 ### Task Definition
 
 The complete task definition can be found in the file [```./sd_task/inference_task_args/task_args.py```](sd_task/inference_task_args/task_args.py)

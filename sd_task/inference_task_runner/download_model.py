@@ -14,6 +14,7 @@ from huggingface_hub.utils import EntryNotFoundError
 from typing import Callable, Union
 from diffusers import AutoencoderKL, ControlNetModel
 
+from .log import log
 
 def check_and_prepare_models(
         task_args: InferenceTaskArgs,
@@ -95,7 +96,7 @@ def check_and_download_external_model(
         proxy: ProxyConfig | None
 ) -> str:
 
-    print("Check and download the external model file: " + model_name)
+    log("Check and download the external model file: " + model_name)
 
     m = hashlib.sha256()
     m.update(model_name.encode('utf-8'))
@@ -104,12 +105,12 @@ def check_and_download_external_model(
     model_folder = os.path.join(external_cache_dir, url_hash)
     model_file = os.path.join(model_folder, "model.safetensors")
 
-    print("The model file will be saved as: " + model_file)
+    log("The model file will be saved as: " + model_file)
 
     # Check if we have already cached the model file
     if os.path.isdir(model_folder):
         if os.path.isfile(model_file):
-            print("Found a local cache of the model file. Skip the download")
+            log("Found a local cache of the model file. Skip the download")
             return model_file
     else:
         os.mkdir(model_folder, 0o755)
@@ -117,7 +118,7 @@ def check_and_download_external_model(
     # Download the model file
     model_file = os.path.join(model_folder, "model.safetensors")
 
-    print("Model file not cached locally. Start the download...")
+    log("Model file not cached locally. Start the download...")
 
     try:
         resp = requests.get(
@@ -152,7 +153,7 @@ def check_and_download_hf_pipeline(
     model_name: str,
     **kwargs
 ) -> str:
-    print("Check and download the Huggingface pipeline: " + model_name)
+    log("Check and download the Huggingface pipeline: " + model_name)
 
     hf_model_cache_dir = kwargs.pop("hf_model_cache_dir")
     proxy = kwargs.pop("proxy")
@@ -176,7 +177,7 @@ def check_and_download_hf_model(
         proxy: ProxyConfig | None
 
 ) -> str:
-    print("Check and download the Huggingface model file: " + model_name)
+    log("Check and download the Huggingface model file: " + model_name)
 
     call_args = {
         "cache_dir": hf_model_cache_dir,
@@ -259,14 +260,16 @@ def best_guess_weight_name(pretrained_model_name_or_path_or_dict, file_extension
     if len(targeted_files) == 0:
         return
 
-    unallowed_substrings = {"scheduler", "optimizer", "checkpoint"}
+    disallowed_substrings = {"scheduler", "optimizer", "checkpoint"}
     targeted_files = list(
-        filter(lambda x: all(substring not in x for substring in unallowed_substrings), targeted_files)
+        filter(lambda x: all(substring not in x for substring in disallowed_substrings), targeted_files)
     )
 
     if len(targeted_files) > 1:
         raise ValueError(
-            f"Provided path contains more than one weights file in the {file_extension} format. Either specify `weight_name` in `load_lora_weights` or make sure there's only one  `.safetensors` or `.bin` file in  {pretrained_model_name_or_path_or_dict}."
+            f"Provided path contains more than one weights file in the {file_extension} format. Either specify "
+            f"`weight_name` in `load_lora_weights` or make sure there's only one  `.safetensors` or `.bin` file in  "
+            f"{pretrained_model_name_or_path_or_dict}."
         )
     weight_name = targeted_files[0]
     return weight_name
