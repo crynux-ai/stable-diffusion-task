@@ -1,10 +1,13 @@
 from contextlib import contextmanager
-from typing import Optional, Type
+from typing import Optional, Type, cast
 
 import torch.cuda
-from huggingface_hub.utils import (GatedRepoError, LocalEntryNotFoundError,
-                                   RepositoryNotFoundError,
-                                   RevisionNotFoundError)
+from huggingface_hub.utils import (
+    GatedRepoError,
+    LocalEntryNotFoundError,
+    RepositoryNotFoundError,
+    RevisionNotFoundError,
+)
 from requests import ConnectionError, HTTPError
 
 __all__ = [
@@ -48,11 +51,11 @@ def travel_exc(e: BaseException):
 
 def match_exception(
     e: Exception, target: Type[Exception], message: Optional[str] = None
-) -> bool:
+) -> Optional[Exception]:
     for exc in travel_exc(e):
         if isinstance(exc, target) and (message is None or message in str(exc)):
-            return True
-    return False
+            return exc
+    return None
 
 
 @contextmanager
@@ -68,11 +71,15 @@ def wrap_download_error():
             or match_exception(e, GatedRepoError)
         ):
             raise ModelInvalid from e
-        elif match_exception(e, HTTPError, "404"):
-            raise ModelInvalid from e
-        elif match_exception(e, HTTPError) or match_exception(e, ConnectionError):
+        elif exc := match_exception(e, HTTPError):
+            exc = cast(HTTPError, e)
+            if exc.response is not None and exc.response.status_code >= 400 and exc.response.status_code < 500:
+                raise ModelInvalid from e
+
             raise ModelDownloadError from e
-        raise e
+        elif match_exception(e, ConnectionError):
+            raise ModelDownloadError from e
+        raise ModelDownloadError from e
 
 
 @contextmanager
