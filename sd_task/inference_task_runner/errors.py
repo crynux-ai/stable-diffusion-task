@@ -1,7 +1,6 @@
 from contextlib import contextmanager
 from typing import Optional, Type, cast
 
-import torch.cuda
 from huggingface_hub.utils import (
     GatedRepoError,
     LocalEntryNotFoundError,
@@ -9,6 +8,13 @@ from huggingface_hub.utils import (
     RevisionNotFoundError,
 )
 from requests import ConnectionError, HTTPError
+
+
+from sd_task import utils
+
+if utils.get_platform() == utils.Platform.LINUX_CUDA:
+    import torch.cuda
+
 
 __all__ = [
     "wrap_download_error",
@@ -82,8 +88,7 @@ def wrap_download_error():
         raise ModelDownloadError from e
 
 
-@contextmanager
-def wrap_execution_error():
+def _wrap_cuda_execution_error():
     try:
         yield
     except torch.cuda.OutOfMemoryError:
@@ -95,3 +100,21 @@ def wrap_execution_error():
             raise TaskExecutionError from e
     except Exception as e:
         raise TaskExecutionError from e
+
+def _wrap_macos_execution_error():
+    try:
+        yield
+    except Exception as e:
+        raise TaskExecutionError from e
+
+@contextmanager
+def wrap_execution_error():
+    platform = utils.get_platform()
+    print(platform)
+    if platform == utils.Platform.LINUX_CUDA:
+        return _wrap_cuda_execution_error()
+    elif platform == utils.Platform.MACOS_MPS:
+        return _wrap_macos_execution_error()
+    else:
+        raise TaskExecutionError(f"Unsupported platform: {platform}")
+    

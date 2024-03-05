@@ -19,10 +19,15 @@ from .log import log
 from .prompt import (add_prompt_pipeline_call_args,
                      add_prompt_refiner_sdxl_call_args)
 
-# Use deterministic algorithms for reproducibility
-os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":16:8"
-torch.backends.cudnn.benchmark = False
-torch.use_deterministic_algorithms(True)
+
+from sd_task import utils
+
+if utils.get_platform() == utils.Platform.LINUX_CUDA:
+    # Use deterministic algorithms for reproducibility
+    os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":16:8"
+    torch.backends.cudnn.benchmark = False
+    torch.use_deterministic_algorithms(True)
+
 
 
 def get_pipeline_init_args(cache_dir: str, args: InferenceTaskArgs | None = None):
@@ -41,6 +46,7 @@ def get_pipeline_init_args(cache_dir: str, args: InferenceTaskArgs | None = None
 
 def prepare_pipeline(cache_dir: str, args: InferenceTaskArgs):
     pipeline_args = get_pipeline_init_args(cache_dir, args)
+    acc_device = utils.get_accelerator()
 
     if args.controlnet is not None:
         controlnet_model = None
@@ -63,7 +69,7 @@ def prepare_pipeline(cache_dir: str, args: InferenceTaskArgs):
                 local_files_only=True,
             )
 
-        pipeline_args["controlnet"] = controlnet_model.to("cuda")
+        pipeline_args["controlnet"] = controlnet_model.to(acc_device)
 
     pipeline = AutoPipelineForText2Image.from_pretrained(
         args.base_model, **pipeline_args
@@ -95,7 +101,7 @@ def prepare_pipeline(cache_dir: str, args: InferenceTaskArgs):
                 local_files_only=True,
             )
 
-        pipeline.vae = vae_model.to("cuda")
+        pipeline.vae = vae_model.to(acc_device)
 
     if args.lora is not None:
         # raises ValueError if the lora model is not compatible with the base model
@@ -111,7 +117,7 @@ def prepare_pipeline(cache_dir: str, args: InferenceTaskArgs):
             args.textual_inversion, cache_dir=cache_dir, local_files_only=True
         )
 
-    pipeline = pipeline.to("cuda")
+    pipeline = pipeline.to(acc_device)
 
     # Refiner pipeline
     refiner = None
@@ -123,7 +129,7 @@ def prepare_pipeline(cache_dir: str, args: InferenceTaskArgs):
         refiner_init_args["vae"] = pipeline.vae
         refiner = DiffusionPipeline.from_pretrained(
             args.refiner.model, **refiner_init_args
-        ).to("cuda")
+        ).to(acc_device)
 
     return pipeline, refiner
 
