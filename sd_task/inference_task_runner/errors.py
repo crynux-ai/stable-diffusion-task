@@ -110,7 +110,6 @@ def _wrap_macos_execution_error():
 @contextmanager
 def wrap_execution_error():
     platform = utils.get_platform()
-    print(platform)
     if platform == utils.Platform.LINUX_CUDA:
         return _wrap_cuda_execution_error()
     elif platform == utils.Platform.MACOS_MPS:
