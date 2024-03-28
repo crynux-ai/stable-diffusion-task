@@ -12,8 +12,6 @@ from requests import ConnectionError, HTTPError
 
 from sd_task import utils
 
-if utils.get_platform() == utils.Platform.LINUX_CUDA:
-    import torch.cuda
 
 
 __all__ = [
@@ -89,9 +87,11 @@ def wrap_download_error():
 
 
 def _wrap_cuda_execution_error():
+    from torch.cuda import OutOfMemoryError
+
     try:
         yield
-    except torch.cuda.OutOfMemoryError:
+    except OutOfMemoryError:
         raise
     except RuntimeError as e:
         if "out of memory" in str(e):
@@ -109,11 +109,7 @@ def _wrap_macos_execution_error():
 
 @contextmanager
 def wrap_execution_error():
-    platform = utils.get_platform()
-    if platform == utils.Platform.LINUX_CUDA:
-        return _wrap_cuda_execution_error()
-    elif platform == utils.Platform.MACOS_MPS:
-        return _wrap_macos_execution_error()
+    if utils.get_accelerator() == "mps":
+        yield from _wrap_macos_execution_error()
     else:
-        raise TaskExecutionError(f"Unsupported platform: {platform}")
-    
+        yield from _wrap_cuda_execution_error()

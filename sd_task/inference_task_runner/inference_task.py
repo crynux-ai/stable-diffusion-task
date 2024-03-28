@@ -22,7 +22,7 @@ from .prompt import (add_prompt_pipeline_call_args,
 
 from sd_task import utils
 
-if utils.get_platform() == utils.Platform.LINUX_CUDA:
+if utils.get_accelerator() == "cuda":
     # Use deterministic algorithms for reproducibility
     os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":16:8"
     torch.backends.cudnn.benchmark = False

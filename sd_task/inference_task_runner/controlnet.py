@@ -9,6 +9,7 @@ from sd_task.inference_task_args.task_args import InferenceTaskArgs
 
 
 def add_controlnet_pipeline_call_args(call_args: dict, gen_image_args: InferenceTaskArgs):
+    assert gen_image_args.controlnet is not None
     image_data = re.sub(
         '^data:image/.+;base64,',
         '',
