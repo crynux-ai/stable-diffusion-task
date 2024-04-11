@@ -5,36 +5,35 @@ from io import BytesIO
 from controlnet_aux import processor
 from PIL import Image
 
-from sd_task.inference_task_args.task_args import InferenceTaskArgs
+from sd_task.inference_task_args.controlnet_args import ControlnetArgs
 
 
-def add_controlnet_pipeline_call_args(call_args: dict, gen_image_args: InferenceTaskArgs):
-    assert gen_image_args.controlnet is not None
+def add_controlnet_pipeline_call_args(call_args: dict, controlnet: ControlnetArgs, image_width: int, image_height: int):
     image_data = re.sub(
         '^data:image/.+;base64,',
         '',
-        gen_image_args.controlnet.image_dataurl)
+        controlnet.image_dataurl)
 
     reference_image = Image.open(BytesIO(base64.b64decode(image_data)))
 
-    if gen_image_args.controlnet.preprocess is not None:
+    if controlnet.preprocess is not None:
 
         args_dict = {}
 
-        if (hasattr(gen_image_args.controlnet.preprocess, 'args')
-                and gen_image_args.controlnet.preprocess.args is not None):
-            args_dict = gen_image_args.controlnet.preprocess.args.model_dump()
+        if (hasattr(controlnet.preprocess, 'args')
+                and controlnet.preprocess.args is not None):
+            args_dict = controlnet.preprocess.args.model_dump()
 
         args_dict["detect_resolution"] = min(reference_image.width, reference_image.height)
         args_dict["image_resolution"] = min(
-            gen_image_args.task_config.image_width,
-            gen_image_args.task_config.image_height
+            image_width,
+            image_height
         )
 
-        preprocessor = processor.Processor(gen_image_args.controlnet.preprocess.method, args_dict)
+        preprocessor = processor.Processor(controlnet.preprocess.method, args_dict)
         reference_image = preprocessor(reference_image, to_pil=True)
 
     call_args["image"] = reference_image
-    call_args["controlnet_conditioning_scale"] = gen_image_args.controlnet.weight
+    call_args["controlnet_conditioning_scale"] = controlnet.weight
 
     return call_args
