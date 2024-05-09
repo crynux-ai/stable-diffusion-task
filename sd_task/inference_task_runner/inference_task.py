@@ -44,7 +44,7 @@ def get_pipeline_init_args(cache_dir: str, safety_checker: bool = True):
         "local_files_only": True,
     }
 
-    if not safety_checker is False:
+    if not safety_checker:
         init_args["safety_checker"] = None
 
     return init_args
