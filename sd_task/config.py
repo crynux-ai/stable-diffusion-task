@@ -82,6 +82,7 @@ class PreloadedModelsConfig(BaseModel):
 
 
 class ProxyConfig(BaseModel):
+    protocol: str = "http"
     host: str = ""
     port: int = 8080
     username: str = ""

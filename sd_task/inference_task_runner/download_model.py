@@ -233,6 +233,16 @@ def check_and_download_hf_model(
 def get_requests_proxy_dict(proxy: ProxyConfig | None) -> dict | None:
     if proxy is not None and proxy.host != "":
 
+        proxy_str = proxy.protocol + "://"
+
+        if proxy.username != "":
+            proxy_str += proxy.username
+
+            if proxy.password != "":
+                proxy_str += ":" + proxy.password
+
+            proxy_str += "@"
+
         proxy_str = proxy.host + ":" + str(proxy.port)
 
         return {

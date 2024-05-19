@@ -16,5 +16,8 @@ preloaded_models:
     - id: "diffusers/controlnet-canny-sdxl-1.0"
   vae:
 proxy:
-  host: ""
+  protocol: "http"
+  host: "127.0.0.1"
   port: 33210
+  username: ""
+  password: ""
