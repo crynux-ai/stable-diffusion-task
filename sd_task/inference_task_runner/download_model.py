@@ -235,7 +235,7 @@ def get_requests_proxy_dict(proxy: ProxyConfig | None) -> dict | None:
 
         proxy_str = proxy.protocol + "://"
 
-        if proxy.username !== "":
+        if proxy.username != "":
             proxy_str += proxy.username
 
             if proxy.password != "":
