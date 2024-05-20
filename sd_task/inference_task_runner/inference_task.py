@@ -196,46 +196,47 @@ def run_task(
     random.seed(args.task_config.seed)
     np.random.seed(args.task_config.seed)
 
-    with wrap_execution_error():
-        model_args: Dict[str, Any] = {
-            "base_model": args.base_model,
-            "textual_inversion": args.textual_inversion,
-            "safety_checker": args.task_config.safety_checker,
-        }
-        if args.lora is not None:
-            model_args["lora_model_name"] = args.lora.model
-            model_args["lora_weight"] = args.lora.weight
-        if args.controlnet is not None:
-            model_args["controlnet_model_name"] = args.controlnet.model
-        if args.vae != "":
-            model_args["vae"] = args.vae
-        if args.refiner is not None:
-            model_args["refiner_model_name"] = args.refiner.model
+    model_args: Dict[str, Any] = {
+        "base_model": args.base_model,
+        "textual_inversion": args.textual_inversion,
+        "safety_checker": args.task_config.safety_checker,
+    }
+    if args.lora is not None:
+        model_args["lora_model_name"] = args.lora.model
+        model_args["lora_weight"] = args.lora.weight
+    if args.controlnet is not None:
+        model_args["controlnet_model_name"] = args.controlnet.model
+    if args.vae != "":
+        model_args["vae"] = args.vae
+    if args.refiner is not None:
+        model_args["refiner_model_name"] = args.refiner.model
 
-        if model_cache is not None and model_cache.has(model_args):
-            pipeline, refiner = model_cache.get(model_args)
-        else:
-            log("Check the model cache and download the models")
+    if model_cache is not None and model_cache.has(model_args):
+        pipeline, refiner = model_cache.get(model_args)
+    else:
+        log("Check the model cache and download the models")
 
-            with wrap_download_error():
-                check_and_prepare_models(
-                    args,
-                    external_model_cache_dir=config.data_dir.models.external,
-                    hf_model_cache_dir=config.data_dir.models.huggingface,
-                    proxy=config.proxy,
-                )
+        with wrap_download_error():
+            check_and_prepare_models(
+                args,
+                external_model_cache_dir=config.data_dir.models.external,
+                hf_model_cache_dir=config.data_dir.models.huggingface,
+                proxy=config.proxy,
+            )
 
-            log("All the required models are downloaded")
+        log("All the required models are downloaded")
 
+        with wrap_execution_error():
             pipeline, refiner = prepare_pipeline(
                 cache_dir=config.data_dir.models.huggingface, **model_args
             )
-            if model_cache is not None:
-                model_cache.set(model_args, (pipeline, refiner))
-            log("The pipeline has been successfully loaded")
+        if model_cache is not None:
+            model_cache.set(model_args, (pipeline, refiner))
+        log("The pipeline has been successfully loaded")
 
-        generated_images = []
+    generated_images = []
 
+    with wrap_execution_error():
         call_args = get_pipeline_call_args(
             pipeline,
             args.prompt,
@@ -270,4 +271,4 @@ def run_task(
 
         log("The images generation is finished")
 
-        return generated_images
+    return generated_images
