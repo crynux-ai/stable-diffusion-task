@@ -2,6 +2,7 @@ import validators
 import hashlib
 import os
 import requests
+from contextlib import contextmanager
 from diffusers.utils import SAFETENSORS_WEIGHTS_NAME, WEIGHTS_NAME
 from diffusers.loaders import LORA_WEIGHT_NAME_SAFE, LORA_WEIGHT_NAME, TEXT_INVERSION_NAME_SAFE, TEXT_INVERSION_NAME
 from diffusers import DiffusionPipeline
@@ -121,24 +122,24 @@ def check_and_download_external_model(
     log("Model file not cached locally. Start the download...")
 
     try:
-        resp = requests.get(
-            model_name,
-            stream=True,
-            timeout=5,
-            proxies=get_requests_proxy_dict(proxy)
-        )
+        with requests_proxy_session(proxy):
+            resp = requests.get(
+                model_name,
+                stream=True,
+                timeout=5,
+            )
 
-        resp.raise_for_status()
+            resp.raise_for_status()
 
-        total_bytes = int(resp.headers.get('content-length', 0))
+            total_bytes = int(resp.headers.get('content-length', 0))
 
-        with tqdm.wrapattr(open(model_file, "wb"), "write",
-                           miniters=1, desc=model_file,
-                           total=total_bytes) as f_out:
-            for chunk in resp.iter_content(chunk_size=1024):
-                if chunk:
-                    f_out.write(chunk)
-            f_out.flush()
+            with tqdm.wrapattr(open(model_file, "wb"), "write",
+                            miniters=1, desc=model_file,
+                            total=total_bytes) as f_out:
+                for chunk in resp.iter_content(chunk_size=1024):
+                    if chunk:
+                        f_out.write(chunk)
+                f_out.flush()
 
         return model_folder
     except Exception as e:
@@ -160,11 +161,11 @@ def check_and_download_hf_pipeline(
 
     call_args = {
         "cache_dir": hf_model_cache_dir,
-        "proxies": get_requests_proxy_dict(proxy),
         "resume_download": True,
         "variant": "fp16",
     }
-    DiffusionPipeline.download(model_name, **call_args)
+    with requests_proxy_session(proxy):
+        DiffusionPipeline.download(model_name, **call_args)
     return model_name
 
 
@@ -181,56 +182,56 @@ def check_and_download_hf_model(
 
     call_args = {
         "cache_dir": hf_model_cache_dir,
-        "proxies": get_requests_proxy_dict(proxy),
         "resume_download": True
     }
 
-    # download the config file
-    if config_loader is not None:
-        config_loader(model_name, **call_args)
+    with requests_proxy_session(proxy):
+        # download the config file
+        if config_loader is not None:
+            config_loader(model_name, **call_args)
 
-    model_file = None
+        model_file = None
 
-    for weights_name in weights_names:
-        if model_file is None:
-            try:
-                call_args["filename"] = add_variant(weights_name, "fp16")
-                model_file = hf_hub_download(model_name, **call_args)
-            except EntryNotFoundError:
-                pass
-
-    if model_file is None:
-        for idx, weights_name in enumerate(weights_names):
-
+        for weights_name in weights_names:
             if model_file is None:
-
-                call_args["filename"] = weights_name
-
-                if (not guess_weight_name) and idx == len(weights_names) - 1:
+                try:
+                    call_args["filename"] = add_variant(weights_name, "fp16")
                     model_file = hf_hub_download(model_name, **call_args)
-                else:
-                    try:
+                except EntryNotFoundError:
+                    pass
+
+        if model_file is None:
+            for idx, weights_name in enumerate(weights_names):
+
+                if model_file is None:
+
+                    call_args["filename"] = weights_name
+
+                    if (not guess_weight_name) and idx == len(weights_names) - 1:
                         model_file = hf_hub_download(model_name, **call_args)
-                    except EntryNotFoundError:
-                        pass
+                    else:
+                        try:
+                            model_file = hf_hub_download(model_name, **call_args)
+                        except EntryNotFoundError:
+                            pass
 
-    if model_file is None and guess_weight_name:
-        weight_name = best_guess_weight_name(model_name, file_extension=".safetensors")
-        if weight_name is None:
-            weight_name = best_guess_weight_name(model_name, file_extension=".bin")
+        if model_file is None and guess_weight_name:
+            weight_name = best_guess_weight_name(model_name, file_extension=".safetensors")
+            if weight_name is None:
+                weight_name = best_guess_weight_name(model_name, file_extension=".bin")
 
-        if weight_name is None:
-            # To raise the same EntryNotFound Error
+            if weight_name is None:
+                # To raise the same EntryNotFound Error
+                hf_hub_download(model_name, **call_args)
+                return model_name
+
+            call_args["filename"] = weight_name
             hf_hub_download(model_name, **call_args)
-            return model_name
-
-        call_args["filename"] = weight_name
-        hf_hub_download(model_name, **call_args)
 
     return model_name
 
 
-def get_requests_proxy_dict(proxy: ProxyConfig | None) -> dict | None:
+def get_requests_proxy_url(proxy: ProxyConfig | None) -> str | None:
     if proxy is not None and proxy.host != "":
 
         if "://" in proxy.host:
@@ -252,12 +253,34 @@ def get_requests_proxy_dict(proxy: ProxyConfig | None) -> dict | None:
 
         proxy_str += f"{host}:{proxy.port}"
 
-        return {
-            'https': proxy_str,
-            'http': proxy_str
-        }
+        return proxy_str
     else:
         return None
+    
+
+@contextmanager
+def requests_proxy_session(proxy: ProxyConfig | None):
+    proxy_url = get_requests_proxy_url(proxy)
+    if proxy_url is not None:
+        origin_http_proxy = os.environ.get("HTTP_PROXY", None)
+        origin_https_proxy = os.environ.get("HTTPS_PROXY", None)
+        os.environ["HTTP_PROXY"] = proxy_url
+        os.environ["HTTPS_PROXY"] = proxy_url
+        try:
+            yield
+        finally:
+            if origin_http_proxy is not None:
+                os.environ["HTTP_PROXY"] = origin_http_proxy
+            else:
+                os.environ.pop("HTTP_PROXY")
+            if origin_https_proxy is not None:
+                os.environ["HTTPS_PROXY"] = origin_https_proxy
+            else:
+                os.environ.pop("HTTPS_PROXY")
+    else:
+        yield
+
+
 
 
 def add_variant(weights_name: str, variant: str | None = None) -> str:
