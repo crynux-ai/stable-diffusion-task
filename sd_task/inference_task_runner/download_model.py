@@ -122,11 +122,12 @@ def check_and_download_external_model(
     log("Model file not cached locally. Start the download...")
 
     try:
-        with requests_proxy_session(proxy):
+        with requests_proxy_session(proxy) as proxies:
             resp = requests.get(
                 model_name,
                 stream=True,
                 timeout=5,
+                proxies=proxies
             )
 
             resp.raise_for_status()
@@ -159,12 +160,13 @@ def check_and_download_hf_pipeline(
     hf_model_cache_dir = kwargs.pop("hf_model_cache_dir")
     proxy = kwargs.pop("proxy")
 
-    call_args = {
-        "cache_dir": hf_model_cache_dir,
-        "resume_download": True,
-        "variant": "fp16",
-    }
-    with requests_proxy_session(proxy):
+    with requests_proxy_session(proxy) as proxies:
+        call_args = {
+            "cache_dir": hf_model_cache_dir,
+            "resume_download": True,
+            "variant": "fp16",
+            "proxies": proxies,
+        }
         DiffusionPipeline.download(model_name, **call_args)
     return model_name
 
@@ -180,13 +182,14 @@ def check_and_download_hf_model(
 ) -> str:
     log("Check and download the Huggingface model file: " + model_name)
 
-    call_args = {
-        "cache_dir": hf_model_cache_dir,
-        "resume_download": True
-    }
 
-    with requests_proxy_session(proxy):
+    with requests_proxy_session(proxy) as proxies:
         # download the config file
+        call_args = {
+            "cache_dir": hf_model_cache_dir,
+            "resume_download": True,
+            "proxies": proxies,
+        }
         if config_loader is not None:
             config_loader(model_name, **call_args)
 
@@ -267,7 +270,10 @@ def requests_proxy_session(proxy: ProxyConfig | None):
         os.environ["HTTP_PROXY"] = proxy_url
         os.environ["HTTPS_PROXY"] = proxy_url
         try:
-            yield
+            yield {
+                "http": proxy_url,
+                "https": proxy_url,
+            }
         finally:
             if origin_http_proxy is not None:
                 os.environ["HTTP_PROXY"] = origin_http_proxy
@@ -278,7 +284,7 @@ def requests_proxy_session(proxy: ProxyConfig | None):
             else:
                 os.environ.pop("HTTPS_PROXY")
     else:
-        yield
+        yield None
 
 
 
