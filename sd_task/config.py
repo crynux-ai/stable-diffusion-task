@@ -115,6 +115,7 @@ class Config(BaseSettings):
         env_nested_delimiter="__",
         yaml_file=os.getenv("SD_TASK_CONFIG", "config.yml"),
         env_file=".env",
+        env_prefix="sd_"
     )
 
     @classmethod
