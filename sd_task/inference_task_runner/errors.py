@@ -13,14 +13,19 @@ from requests import ConnectionError, HTTPError
 from sd_task import utils
 
 
-
 __all__ = [
     "wrap_download_error",
     "wrap_execution_error",
     "ModelInvalid",
     "ModelDownloadError",
     "TaskExecutionError",
+    "TaskVersionNotSupported",
 ]
+
+
+class TaskVersionNotSupported(ValueError):
+    def __str__(self) -> str:
+        return "Task version not supported"
 
 
 class ModelInvalid(ValueError):
@@ -77,7 +82,7 @@ def wrap_download_error():
             raise ModelInvalid from e
         elif exc := match_exception(e, HTTPError):
             exc = cast(HTTPError, e)
-            if exc.response is not None and exc.response.status_code >= 400 and exc.response.status_code < 500:
+            if exc.response is not None and 400 <= exc.response.status_code < 500:
                 raise ModelInvalid from e
 
             raise ModelDownloadError from e
@@ -101,11 +106,13 @@ def _wrap_cuda_execution_error():
     except Exception as e:
         raise TaskExecutionError from e
 
+
 def _wrap_macos_execution_error():
     try:
         yield
     except Exception as e:
         raise TaskExecutionError from e
+
 
 @contextmanager
 def wrap_execution_error():

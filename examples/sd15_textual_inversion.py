@@ -6,11 +6,15 @@ if __name__ == '__main__':
     prompt = "a grafitti in a favela wall with a <cat-toy> on it"
 
     args = {
-        "base_model": "runwayml/stable-diffusion-v1-5",
+        "version": "2.0.0",
+        "base_model": {
+            "name": "runwayml/stable-diffusion-v1-5"
+        },
         "prompt": prompt,
         "textual_inversion": "sd-concepts-library/cat-toy",
         "task_config": {
-            "num_images": 9
+            "num_images": 9,
+            "steps": 40
         }
     }
 

@@ -14,20 +14,23 @@ if __name__ == '__main__':
     args = {
         "version": "2.0.0",
         "base_model": {
-            "name": "stabilityai/stable-diffusion-xl-base-1.0"
+            "name": "stabilityai/sdxl-turbo"
+        },
+        "scheduler": {
+            "method": "EulerAncestralDiscreteScheduler",
+            "args": {
+                "timestep_spacing": "trailing"
+            }
         },
         "prompt": prompt,
         "negative_prompt": negative_prompt,
         "task_config": {
             "num_images": 9,
-            "steps": 40
+            "steps": 1,
+            "cfg": 0
         },
-        "refiner": {
-            "model": "stabilityai/stable-diffusion-xl-refiner-1.0",
-            "denoising_cutoff": 80
-        }
     }
 
     images = run_task(InferenceTaskArgs.model_validate(args))
     image_grid = make_image_grid(images, 3, 3)
-    image_grid.save("./data/sdxl_base_refiner.png")
+    image_grid.save("./data/sdxl_turbo.png")

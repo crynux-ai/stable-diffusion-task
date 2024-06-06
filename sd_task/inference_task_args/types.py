@@ -3,6 +3,7 @@ from pydantic.functional_serializers import PlainSerializer
 from pydantic.functional_validators import AfterValidator
 from pydantic import WithJsonSchema, Field
 from typing_extensions import Annotated
+from enum import Enum
 
 
 def fraction_int_to_float(fraction: int) -> float:
@@ -30,3 +31,7 @@ NonEmptyString = Annotated[
     str,
     MinLen(1)
 ]
+
+
+class VersionString(str, Enum):
+    V2_0_0 = '2.0.0'

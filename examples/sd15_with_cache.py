@@ -11,7 +11,10 @@ if __name__ == '__main__':
     negative_prompt = ""
 
     args = {
-        "base_model": "runwayml/stable-diffusion-v1-5",
+        "version": "2.0.0",
+        "base_model": {
+            "name": "runwayml/stable-diffusion-v1-5"
+        },
         "prompt": prompt,
         "negative_prompt": negative_prompt,
         "task_config": {

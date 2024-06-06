@@ -4,8 +4,11 @@ from diffusers.utils import make_image_grid
 
 if __name__ == '__main__':
     args = {
-        "base_model": "stabilityai/stable-diffusion-xl-base-1.0",
-        "prompt": "hamburger,, lettuce, mayo, lettuce, no tomato",
+        "version": "2.0.0",
+        "base_model": {
+            "name": "stabilityai/stable-diffusion-xl-base-1.0"
+        },
+        "prompt": "hamburger, lettuce, mayo, lettuce, no tomato",
         "task_config": {
             "num_images": 9,
             "steps": 30
@@ -13,7 +16,6 @@ if __name__ == '__main__':
         "lora": {
             "model": "ostris/ikea-instructions-lora-sdxl"
         }
-
     }
 
     images = run_task(InferenceTaskArgs.model_validate(args))

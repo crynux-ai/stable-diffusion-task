@@ -8,7 +8,10 @@ if __name__ == '__main__':
     ref_image = get_controlnet_ref_image_dataurl()
 
     args = {
-        "base_model": "stabilityai/stable-diffusion-xl-base-1.0",
+        "version": "2.0.0",
+        "base_model": {
+            "name": "stabilityai/stable-diffusion-xl-base-1.0"
+        },
         "prompt": "best quality, ultra high res, photorealistic++++, 1girl, desert, full shot, dark stillsuit, "
                   "stillsuit mask up, gloves, solo, highly detailed eyes,"
                   "hyper-detailed, high quality visuals, dim Lighting, ultra-realistic, sharply focused, octane render,"

@@ -9,7 +9,6 @@ from diffusers import (
     AutoPipelineForText2Image,
     ControlNetModel,
     DiffusionPipeline,
-    DPMSolverMultistepScheduler,
 )
 from PIL import Image
 
@@ -24,10 +23,14 @@ from sd_task.inference_task_args.task_args import (
 from sd_task.cache import ModelCache
 
 from .controlnet import add_controlnet_pipeline_call_args
+from .scheduler import add_scheduler_pipeline_args
 from .download_model import check_and_prepare_models
-from .errors import wrap_download_error, wrap_execution_error
+from .errors import wrap_download_error, wrap_execution_error, TaskVersionNotSupported
 from .log import log
 from .prompt import add_prompt_pipeline_call_args, add_prompt_refiner_sdxl_call_args
+
+import pkg_resources
+from packaging.version import Version
 
 if utils.get_accelerator() == "cuda":
     # Use deterministic algorithms for reproducibility
@@ -36,13 +39,15 @@ if utils.get_accelerator() == "cuda":
     torch.use_deterministic_algorithms(True)
 
 
-def get_pipeline_init_args(cache_dir: str, safety_checker: bool = True):
+def get_pipeline_init_args(cache_dir: str, safety_checker: bool = True, variant="fp16"):
     init_args = {
         "torch_dtype": torch.float16,
-        "variant": "fp16",
         "cache_dir": cache_dir,
         "local_files_only": True,
     }
+
+    if variant is not None:
+        init_args["variant"] = variant
 
     if not safety_checker:
         init_args["safety_checker"] = None
@@ -51,24 +56,17 @@ def get_pipeline_init_args(cache_dir: str, safety_checker: bool = True):
 
 
 def prepare_pipeline(
-    cache_dir: str,
-    base_model: str,
-    lora_model_name: str = "",
-    lora_weight: float = 0,
-    controlnet_model_name: str = "",
-    vae: str = "",
-    refiner_model_name: str = "",
-    textual_inversion: str = "",
-    safety_checker: bool = True,
+        cache_dir: str,
+        args: InferenceTaskArgs
 ):
-    pipeline_args = get_pipeline_init_args(cache_dir, safety_checker)
+    pipeline_args = get_pipeline_init_args(cache_dir, args.task_config.safety_checker, args.base_model.variant)
     acc_device = utils.get_accelerator()
 
-    if controlnet_model_name != "":
+    if args.controlnet is not None and args.controlnet.model != "":
         controlnet_model = None
         try:
             controlnet_model = ControlNetModel.from_pretrained(
-                controlnet_model_name,
+                args.controlnet.model,
                 torch_dtype=torch.float16,
                 cache_dir=cache_dir,
                 variant="fp16",
@@ -79,7 +77,7 @@ def prepare_pipeline(
 
         if controlnet_model is None:
             controlnet_model = ControlNetModel.from_pretrained(
-                controlnet_model_name,
+                args.controlnet.model,
                 torch_dtype=torch.float16,
                 cache_dir=cache_dir,
                 local_files_only=True,
@@ -87,18 +85,15 @@ def prepare_pipeline(
 
         pipeline_args["controlnet"] = controlnet_model.to(acc_device)
 
-    pipeline = AutoPipelineForText2Image.from_pretrained(base_model, **pipeline_args)
+    pipeline = AutoPipelineForText2Image.from_pretrained(args.base_model.name, **pipeline_args)
 
-    # Faster scheduler from the huggingface doc, requires only ~20-25 steps
-    pipeline.scheduler = DPMSolverMultistepScheduler.from_config(
-        pipeline.scheduler.config
-    )
+    add_scheduler_pipeline_args(pipeline, args.scheduler)
 
-    if vae != "":
+    if args.vae != "":
         vae_model = None
         try:
             vae_model = AutoencoderKL.from_pretrained(
-                vae,
+                args.vae,
                 torch_dtype=torch.float16,
                 cache_dir=cache_dir,
                 local_files_only=True,
@@ -109,7 +104,7 @@ def prepare_pipeline(
 
         if vae_model is None:
             vae_model = AutoencoderKL.from_pretrained(
-                vae,
+                args.vae,
                 torch_dtype=torch.float16,
                 cache_dir=cache_dir,
                 local_files_only=True,
@@ -117,18 +112,19 @@ def prepare_pipeline(
 
         pipeline.vae = vae_model.to(acc_device)
 
-    if lora_model_name != "":
+    if args.lora is not None and args.lora.model != "":
         # raises ValueError if the lora model is not compatible with the base model
         pipeline.load_lora_weights(
-            lora_model_name,
-            lora_scale=lora_weight,
+            args.lora.model,
+            weight_name=args.lora.weight_file_name,
+            lora_scale=args.lora.weight,
             cache_dir=cache_dir,
             local_files_only=True,
         )
 
-    if textual_inversion != "":
+    if args.textual_inversion is not None and args.textual_inversion != "":
         pipeline.load_textual_inversion(
-            textual_inversion, cache_dir=cache_dir, local_files_only=True
+            args.textual_inversion, cache_dir=cache_dir, local_files_only=True
         )
 
     pipeline = pipeline.to(acc_device)
@@ -136,25 +132,25 @@ def prepare_pipeline(
     # Refiner pipeline
     refiner_model = None
 
-    if refiner_model_name != "":
-        refiner_init_args = get_pipeline_init_args(cache_dir)
+    if args.refiner is not None and args.refiner.model != "":
+        refiner_init_args = get_pipeline_init_args(cache_dir, args.task_config.safety_checker, args.refiner.variant)
         refiner_init_args["tokenizer_2"] = pipeline.tokenizer_2
         refiner_init_args["text_encoder_2"] = pipeline.text_encoder_2
         refiner_init_args["vae"] = pipeline.vae
         refiner_model = DiffusionPipeline.from_pretrained(
-            refiner_model_name, **refiner_init_args
+            args.refiner.model, **refiner_init_args
         ).to(acc_device)
 
     return pipeline, refiner_model
 
 
 def get_pipeline_call_args(
-    pipeline,
-    prompt: str,
-    negative_prompt: str,
-    task_config: TaskConfig,
-    controlnet: ControlnetArgs | None = None,
-    refiner: RefinerArgs | None = None,
+        pipeline,
+        prompt: str,
+        negative_prompt: str,
+        task_config: TaskConfig,
+        controlnet: ControlnetArgs | None = None,
+        refiner: RefinerArgs | None = None,
 ) -> Dict[str, Any]:
     call_args: Dict[str, Any] = {
         "num_inference_steps": task_config.steps,
@@ -183,10 +179,17 @@ def get_pipeline_call_args(
 
 
 def run_task(
-    args: InferenceTaskArgs,
-    config: Config | None = None,
-    model_cache: ModelCache | None = None,
+        args: InferenceTaskArgs,
+        config: Config | None = None,
+        model_cache: ModelCache | None = None,
 ) -> List[Image.Image]:
+    # Make sure the version of task is supported
+    runner_version = Version(pkg_resources.get_distribution("sd_task").version)
+    task_version = Version(args.version)
+
+    if runner_version < task_version:
+        raise TaskVersionNotSupported()
+
     if config is None:
         config = get_config()
 
@@ -197,18 +200,18 @@ def run_task(
     np.random.seed(args.task_config.seed)
 
     model_args: Dict[str, Any] = {
-        "base_model": args.base_model,
+        "base_model": args.base_model.name,
         "textual_inversion": args.textual_inversion,
         "safety_checker": args.task_config.safety_checker,
     }
-    if args.lora is not None:
+    if args.lora is not None and args.lora.model != "":
         model_args["lora_model_name"] = args.lora.model
         model_args["lora_weight"] = args.lora.weight
-    if args.controlnet is not None:
+    if args.controlnet is not None and args.controlnet != "":
         model_args["controlnet_model_name"] = args.controlnet.model
-    if args.vae != "":
+    if args.vae is not None and args.vae != "":
         model_args["vae"] = args.vae
-    if args.refiner is not None:
+    if args.refiner is not None and args.refiner.model != "":
         model_args["refiner_model_name"] = args.refiner.model
 
     if model_cache is not None and model_cache.has(model_args):
@@ -228,7 +231,7 @@ def run_task(
 
         with wrap_execution_error():
             pipeline, refiner = prepare_pipeline(
-                cache_dir=config.data_dir.models.huggingface, **model_args
+                cache_dir=config.data_dir.models.huggingface, args=args
             )
         if model_cache is not None:
             model_cache.set(model_args, (pipeline, refiner))
@@ -258,8 +261,8 @@ def run_task(
             if args.controlnet is None:
                 refiner_call_args["denoising_start"] = args.refiner.denoising_cutoff
 
-
         log("The images generation is started")
+
         for _ in range(args.task_config.num_images):
             image = pipeline(**call_args)
 

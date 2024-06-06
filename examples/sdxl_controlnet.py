@@ -16,7 +16,10 @@ if __name__ == '__main__':
                        "age spot, glans")
 
     args = {
-        "base_model": "stabilityai/stable-diffusion-xl-base-1.0",
+        "version": "2.0.0",
+        "base_model": {
+            "name": "stabilityai/stable-diffusion-xl-base-1.0"
+        },
         "prompt": prompt,
         "negative_prompt": negative_prompt,
         "task_config": {
