@@ -5,9 +5,12 @@ A general framework to define and execute the Stable Diffusion task.
 
 ### Features
 
+* The latest acceleration tech to generate images in only 1 step using SDXL Turbo & Latent Consistency Models (LCM)
 * Unified task definition for Stable Diffusion 1.5, 2.1 and Stable Diffusion XL
 * SDXL - Base + Refiner ([ensemble of expert denoisers](https://research.nvidia.com/labs/dir/eDiff-I/)) and standalone Refiner
 * Controlnet and various preprocessing methods
+* UNet replacement
+* Scheduler configuration
 * LoRA
 * VAE
 * Textual Inversion
@@ -19,7 +22,8 @@ A general framework to define and execute the Stable Diffusion task.
 
 ### Example
 
-Here is an example of the SDXL image generation, with LoRA, ControlNet and SDXL image refiner:
+Here is an example of the SDXL image generation, with LoRA, ControlNet, 
+utilizing SDXL Turbo to generate images in only 1 step.
 
 ```python
 from sd_task.inference_task_runner.inference_task import run_task
@@ -28,7 +32,10 @@ from diffusers.utils import make_image_grid
 
 if __name__ == '__main__':
     args = {
-        "base_model": "stabilityai/stable-diffusion-xl-base-1.0",
+        "version": "2.0.0",
+        "base_model": {
+            "name": "stabilityai/sdxl-turbo"
+        },
         "prompt": "best quality, ultra high res, photorealistic++++, 1girl, desert, full shot, dark stillsuit, "
                   "stillsuit mask up, gloves, solo, highly detailed eyes,"
                   "hyper-detailed, high quality visuals, dim Lighting, ultra-realistic, sharply focused, octane render,"
@@ -39,7 +46,8 @@ if __name__ == '__main__':
                            "low resolution,",
         "task_config": {
             "num_images": 9,
-            "steps": 30
+            "steps": 1,
+            "cfg": 0
         },
         "lora": {
             "model": "https://civitai.com/api/download/models/178048"
@@ -52,16 +60,19 @@ if __name__ == '__main__':
             },
             "weight": 70
         },
-        "refiner": {
-            "model": "stabilityai/stable-diffusion-xl-refiner-1.0"
+        "scheduler": {
+            "method": "EulerAncestralDiscreteScheduler",
+            "args": {
+                "timestep_spacing": "trailing"
+            }
         }
     }
 
     images = run_task(InferenceTaskArgs.model_validate(args))
     image_grid = make_image_grid(images, 3, 3)
-    image_grid.save("./data/sdxl_lora_controlnet_refiner.png")
+    image_grid.save("./data/sdxl_turbo_lora_controlnet.png")
 ```
-
+More examples can be found in [Examples](./examples)
 
 ### Get started
 
@@ -73,7 +84,8 @@ $ source ./venv/bin/activate
 
 Install the dependencies:
 ```shell
-(venv) $ pip install -r requirments.txt
+# Use requirements_macos.txt on Macos
+(venv) $ pip install -r requirments_cuda.txt
 ```
 
 Cache the base model files:
@@ -83,7 +95,7 @@ Cache the base model files:
 
 Check and run the examples:
 ```shell
-(venv) $ python ./examples/sd15_controlnet_openpose.py
+(venv) $ python ./examples/sdxl_turbo_lora_controlnet.py
 ```
 
 More explanations can be found in the doc:
