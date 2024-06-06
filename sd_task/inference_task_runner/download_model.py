@@ -4,36 +4,45 @@ import os
 import requests
 from contextlib import contextmanager
 from diffusers.utils import SAFETENSORS_WEIGHTS_NAME, WEIGHTS_NAME
-from diffusers.loaders import LORA_WEIGHT_NAME_SAFE, LORA_WEIGHT_NAME, TEXT_INVERSION_NAME_SAFE, TEXT_INVERSION_NAME
-from diffusers import DiffusionPipeline
-
 from sd_task.config import ProxyConfig
 from tqdm import tqdm
 from sd_task.inference_task_args.task_args import InferenceTaskArgs
 from huggingface_hub import hf_hub_download, model_info
 from huggingface_hub.utils import EntryNotFoundError
 from typing import Callable, Union
-from diffusers import AutoencoderKL, ControlNetModel
+from diffusers import AutoencoderKL, ControlNetModel, DiffusionPipeline, UNet2DConditionModel
 
 from .log import log
+
 
 def check_and_prepare_models(
         task_args: InferenceTaskArgs,
         **kwargs):
 
-    task_args.base_model = check_and_download_hf_pipeline(
-        task_args.base_model,
+    task_args.base_model.name = check_and_download_hf_pipeline(
+        task_args.base_model.name,
+        task_args.base_model.variant,
         **kwargs
     )
 
     if task_args.refiner is not None and task_args.refiner.model != "":
         task_args.refiner.model = check_and_download_hf_pipeline(
             task_args.refiner.model,
+            task_args.refiner.variant,
+            **kwargs
+        )
+
+    if task_args.unet is not None and task_args.unet != "":
+        task_args.unet, _ = check_and_download_model_by_name(
+            task_args.unet,
+            UNet2DConditionModel.load_config,
+            [SAFETENSORS_WEIGHTS_NAME, WEIGHTS_NAME],
+            False,
             **kwargs
         )
 
     if task_args.vae != "":
-        task_args.vae = check_and_download_model_by_name(
+        task_args.vae, _ = check_and_download_model_by_name(
             task_args.vae,
             AutoencoderKL.load_config,
             [SAFETENSORS_WEIGHTS_NAME, WEIGHTS_NAME],
@@ -42,7 +51,7 @@ def check_and_prepare_models(
         )
 
     if task_args.controlnet is not None:
-        task_args.controlnet.model = check_and_download_model_by_name(
+        task_args.controlnet.model, _ = check_and_download_model_by_name(
             task_args.controlnet.model,
             ControlNetModel.load_config,
             [SAFETENSORS_WEIGHTS_NAME, WEIGHTS_NAME],
@@ -51,19 +60,19 @@ def check_and_prepare_models(
         )
 
     if task_args.lora is not None:
-        task_args.lora.model = check_and_download_model_by_name(
+        task_args.lora.model, task_args.lora.weight_file_name = check_and_download_model_by_name(
             task_args.lora.model,
             None,
-            [LORA_WEIGHT_NAME_SAFE, LORA_WEIGHT_NAME],
+            [],
             True,
             **kwargs
         )
 
     if task_args.textual_inversion != "":
-        task_args.textual_inversion = check_and_download_model_by_name(
+        task_args.textual_inversion, _ = check_and_download_model_by_name(
             task_args.textual_inversion,
             None,
-            [TEXT_INVERSION_NAME_SAFE, TEXT_INVERSION_NAME],
+            [],
             True,
             **kwargs
         )
@@ -74,7 +83,7 @@ def check_and_download_model_by_name(
         loader: Union[Callable, None],
         weights_names: list[str],
         guess_weights_name: bool,
-        **kwargs) -> str:
+        **kwargs) -> tuple[str, str]:
     hf_model_cache_dir = kwargs.pop("hf_model_cache_dir")
     external_model_cache_dir = kwargs.pop("external_model_cache_dir")
     proxy = kwargs.pop("proxy")
@@ -95,16 +104,18 @@ def check_and_download_external_model(
         model_name: str,
         external_cache_dir: str,
         proxy: ProxyConfig | None
-) -> str:
+) -> tuple[str, str]:
 
     log("Check and download the external model file: " + model_name)
+
+    weight_file_name = "model.safetensors"
 
     m = hashlib.sha256()
     m.update(model_name.encode('utf-8'))
     url_hash = m.hexdigest()
 
     model_folder = os.path.join(external_cache_dir, url_hash)
-    model_file = os.path.join(model_folder, "model.safetensors")
+    model_file = os.path.join(model_folder, weight_file_name)
 
     log("The model file will be saved as: " + model_file)
 
@@ -112,7 +123,7 @@ def check_and_download_external_model(
     if os.path.isdir(model_folder):
         if os.path.isfile(model_file):
             log("Found a local cache of the model file. Skip the download")
-            return model_file
+            return model_file, weight_file_name
     else:
         os.mkdir(model_folder, 0o755)
 
@@ -142,7 +153,7 @@ def check_and_download_external_model(
                         f_out.write(chunk)
                 f_out.flush()
 
-        return model_folder
+        return model_folder, weight_file_name
     except Exception as e:
         # delete the broken file if download failed
         if os.path.isfile(model_file):
@@ -153,6 +164,7 @@ def check_and_download_external_model(
 
 def check_and_download_hf_pipeline(
     model_name: str,
+    variant: str,
     **kwargs
 ) -> str:
     log("Check and download the Huggingface pipeline: " + model_name)
@@ -164,7 +176,7 @@ def check_and_download_hf_pipeline(
         call_args = {
             "cache_dir": hf_model_cache_dir,
             "resume_download": True,
-            "variant": "fp16",
+            "variant": variant,
             "proxies": proxies,
         }
         DiffusionPipeline.download(model_name, **call_args)
@@ -179,9 +191,9 @@ def check_and_download_hf_model(
         hf_model_cache_dir: str,
         proxy: ProxyConfig | None
 
-) -> str:
+) -> tuple[str, str]:
     log("Check and download the Huggingface model file: " + model_name)
-
+    weight_file_name = ""
 
     with requests_proxy_session(proxy) as proxies:
         # download the config file
@@ -200,6 +212,7 @@ def check_and_download_hf_model(
                 try:
                     call_args["filename"] = add_variant(weights_name, "fp16")
                     model_file = hf_hub_download(model_name, **call_args)
+                    weight_file_name = call_args["filename"]
                 except EntryNotFoundError:
                     pass
 
@@ -212,26 +225,30 @@ def check_and_download_hf_model(
 
                     if (not guess_weight_name) and idx == len(weights_names) - 1:
                         model_file = hf_hub_download(model_name, **call_args)
+                        weight_file_name = call_args["filename"]
                     else:
                         try:
                             model_file = hf_hub_download(model_name, **call_args)
+                            weight_file_name = call_args["filename"]
                         except EntryNotFoundError:
                             pass
 
         if model_file is None and guess_weight_name:
             weight_name = best_guess_weight_name(model_name, file_extension=".safetensors")
+
             if weight_name is None:
                 weight_name = best_guess_weight_name(model_name, file_extension=".bin")
 
-            if weight_name is None:
-                # To raise the same EntryNotFound Error
-                hf_hub_download(model_name, **call_args)
-                return model_name
+                if weight_name is None:
+                    # To raise the same EntryNotFound Error
+                    hf_hub_download(model_name, **call_args)
+                    return model_name, ""
 
             call_args["filename"] = weight_name
             hf_hub_download(model_name, **call_args)
+            weight_file_name = weight_name
 
-    return model_name
+    return model_name, weight_file_name
 
 
 def get_requests_proxy_url(proxy: ProxyConfig | None) -> str | None:
@@ -285,8 +302,6 @@ def requests_proxy_session(proxy: ProxyConfig | None):
                 os.environ.pop("HTTPS_PROXY")
     else:
         yield None
-
-
 
 
 def add_variant(weights_name: str, variant: str | None = None) -> str:

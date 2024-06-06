@@ -12,7 +12,11 @@ if __name__ == '__main__':
                        "age spot, glans")
 
     args = {
-        "base_model": "emilianJR/chilloutmix_NiPrunedFp32Fix",
+        "version": "2.0.0",
+        "base_model": {
+            "name": "emilianJR/chilloutmix_NiPrunedFp32Fix",
+            "variant": None
+        },
         "prompt": prompt,
         "negative_prompt": negative_prompt,
         "task_config": {

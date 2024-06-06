@@ -3,9 +3,7 @@ from sd_task.inference_task_args.task_args import InferenceTaskArgs
 from diffusers.utils import make_image_grid
 
 if __name__ == '__main__':
-    prompt = ("a realistic photo of an old man sitting on a brown chair, on the seaside, with blue sky and white "
-              "clouds, a dog is lying under his legs, masterpiece, high resolution")
-
+    prompt = "Self-portrait oil painting, a beautiful cyborg with golden hair, 8k"
     negative_prompt = ""
 
     args = {
@@ -18,12 +16,18 @@ if __name__ == '__main__':
         "task_config": {
             "num_images": 9,
             "safety_checker": False,
-            "cfg": 7,
-            "seed": 99975892,
-            "steps": 40
+            "steps": 4,
+            "cfg": 1
+        },
+        "lora": {
+            "model": "latent-consistency/lcm-lora-sdv1-5",
+            "weight": 70
+        },
+        "scheduler": {
+            "method": "LCMScheduler"
         }
     }
 
     images = run_task(InferenceTaskArgs.model_validate(args))
     image_grid = make_image_grid(images, 3, 3)
-    image_grid.save("./data/sd15.png")
+    image_grid.save("./data/sd15_lcm_lora.png")

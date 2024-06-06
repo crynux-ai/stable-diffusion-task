@@ -16,12 +16,16 @@ if __name__ == '__main__':
                        "age spot, glans")
 
     args = {
-        "base_model": "runwayml/stable-diffusion-v1-5",
+        "version": "2.0.0",
+        "base_model": {
+            "name": "runwayml/stable-diffusion-v1-5"
+        },
         "prompt": prompt,
         "negative_prompt": negative_prompt,
         "task_config": {
             "num_images": 9,
-            "safety_checker": False
+            "safety_checker": False,
+            "steps": 40
         },
         "controlnet": {
             "model": "lllyasviel/control_v11p_sd15_openpose",
