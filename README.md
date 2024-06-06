@@ -107,5 +107,5 @@ $ ./venv/bin/activate
 
 (venv) $ pip install -r requirements_cuda.txt
 (venv) $ pip install .
-(venv) $ python sd_task/inference_task_args/generate_json_schema.py
+(venv) $ python ./sd_task/inference_task_args/generate_json_schema.py
 ```

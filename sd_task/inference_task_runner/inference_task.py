@@ -9,6 +9,7 @@ from diffusers import (
     AutoPipelineForText2Image,
     ControlNetModel,
     DiffusionPipeline,
+    UNet2DConditionModel
 )
 from PIL import Image
 
@@ -84,6 +85,29 @@ def prepare_pipeline(
             )
 
         pipeline_args["controlnet"] = controlnet_model.to(acc_device)
+
+    if args.unet is not None and args.unet != "":
+        unet_model = None
+        try:
+            unet_model = UNet2DConditionModel.from_pretrained(
+                args.unet,
+                torch_dtype=torch.float16,
+                cache_dir=cache_dir,
+                local_files_only=True,
+                variant="fp16",
+            )
+        except EnvironmentError:
+            pass
+
+        if unet_model is None:
+            unet_model = UNet2DConditionModel.from_pretrained(
+                args.unet,
+                torch_dtype=torch.float16,
+                cache_dir=cache_dir,
+                local_files_only=True,
+            )
+
+        pipeline_args["unet"] = unet_model
 
     pipeline = AutoPipelineForText2Image.from_pretrained(args.base_model.name, **pipeline_args)
 
@@ -204,6 +228,9 @@ def run_task(
         "textual_inversion": args.textual_inversion,
         "safety_checker": args.task_config.safety_checker,
     }
+
+    if args.unet is not None and args.unet != "":
+        model_args["unet"] = args.unet
     if args.lora is not None and args.lora.model != "":
         model_args["lora_model_name"] = args.lora.model
         model_args["lora_weight"] = args.lora.weight

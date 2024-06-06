@@ -4,15 +4,13 @@ import os
 import requests
 from contextlib import contextmanager
 from diffusers.utils import SAFETENSORS_WEIGHTS_NAME, WEIGHTS_NAME
-from diffusers import DiffusionPipeline
-
 from sd_task.config import ProxyConfig
 from tqdm import tqdm
 from sd_task.inference_task_args.task_args import InferenceTaskArgs
 from huggingface_hub import hf_hub_download, model_info
 from huggingface_hub.utils import EntryNotFoundError
-from typing import Callable, Union, Tuple
-from diffusers import AutoencoderKL, ControlNetModel
+from typing import Callable, Union
+from diffusers import AutoencoderKL, ControlNetModel, DiffusionPipeline, UNet2DConditionModel
 
 from .log import log
 
@@ -31,6 +29,15 @@ def check_and_prepare_models(
         task_args.refiner.model = check_and_download_hf_pipeline(
             task_args.refiner.model,
             task_args.refiner.variant,
+            **kwargs
+        )
+
+    if task_args.unet is not None and task_args.unet != "":
+        task_args.unet, _ = check_and_download_model_by_name(
+            task_args.unet,
+            UNet2DConditionModel.load_config,
+            [SAFETENSORS_WEIGHTS_NAME, WEIGHTS_NAME],
+            False,
             **kwargs
         )
 
