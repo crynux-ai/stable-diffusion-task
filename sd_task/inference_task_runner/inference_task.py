@@ -3,35 +3,30 @@ import random
 from typing import Any, Dict, List
 
 import numpy as np
+import pkg_resources
 import torch
-from diffusers import (
-    AutoencoderKL,
-    AutoPipelineForText2Image,
-    ControlNetModel,
-    DiffusionPipeline,
-    UNet2DConditionModel
-)
+from diffusers import (AutoencoderKL, AutoPipelineForText2Image,
+                       ControlNetModel, DiffusionPipeline,
+                       UNet2DConditionModel)
+from packaging.version import Version
 from PIL import Image
 
 from sd_task import utils
+from sd_task.cache import ModelCache
 from sd_task.config import Config, get_config
 from sd_task.inference_task_args.controlnet_args import ControlnetArgs
-from sd_task.inference_task_args.task_args import (
-    InferenceTaskArgs,
-    RefinerArgs,
-    TaskConfig,
-)
-from sd_task.cache import ModelCache
+from sd_task.inference_task_args.task_args import (InferenceTaskArgs,
+                                                   RefinerArgs, TaskConfig)
 
 from .controlnet import add_controlnet_pipeline_call_args
-from .scheduler import add_scheduler_pipeline_args
 from .download_model import check_and_prepare_models
-from .errors import wrap_download_error, wrap_execution_error, TaskVersionNotSupported
+from .errors import (TaskVersionNotSupported, wrap_download_error,
+                     wrap_execution_error)
+from .key import generate_model_key
 from .log import log
-from .prompt import add_prompt_pipeline_call_args, add_prompt_refiner_sdxl_call_args
-
-import pkg_resources
-from packaging.version import Version
+from .prompt import (add_prompt_pipeline_call_args,
+                     add_prompt_refiner_sdxl_call_args)
+from .scheduler import add_scheduler_pipeline_args
 
 if utils.get_accelerator() == "cuda":
     # Use deterministic algorithms for reproducibility
@@ -56,11 +51,10 @@ def get_pipeline_init_args(cache_dir: str, safety_checker: bool = True, variant=
     return init_args
 
 
-def prepare_pipeline(
-        cache_dir: str,
-        args: InferenceTaskArgs
-):
-    pipeline_args = get_pipeline_init_args(cache_dir, args.task_config.safety_checker, args.base_model.variant)
+def prepare_pipeline(cache_dir: str, args: InferenceTaskArgs):
+    pipeline_args = get_pipeline_init_args(
+        cache_dir, args.task_config.safety_checker, args.base_model.variant
+    )
     acc_device = utils.get_accelerator()
 
     if args.controlnet is not None and args.controlnet.model != "":
@@ -109,7 +103,9 @@ def prepare_pipeline(
 
         pipeline_args["unet"] = unet_model
 
-    pipeline = AutoPipelineForText2Image.from_pretrained(args.base_model.name, **pipeline_args)
+    pipeline = AutoPipelineForText2Image.from_pretrained(
+        args.base_model.name, **pipeline_args
+    )
 
     add_scheduler_pipeline_args(pipeline, args.scheduler)
 
@@ -157,7 +153,9 @@ def prepare_pipeline(
     refiner_model = None
 
     if args.refiner is not None and args.refiner.model != "":
-        refiner_init_args = get_pipeline_init_args(cache_dir, args.task_config.safety_checker, args.refiner.variant)
+        refiner_init_args = get_pipeline_init_args(
+            cache_dir, args.task_config.safety_checker, args.refiner.variant
+        )
         refiner_init_args["tokenizer_2"] = pipeline.tokenizer_2
         refiner_init_args["text_encoder_2"] = pipeline.text_encoder_2
         refiner_init_args["vae"] = pipeline.vae
@@ -169,12 +167,12 @@ def prepare_pipeline(
 
 
 def get_pipeline_call_args(
-        pipeline,
-        prompt: str,
-        negative_prompt: str,
-        task_config: TaskConfig,
-        controlnet: ControlnetArgs | None = None,
-        refiner: RefinerArgs | None = None,
+    pipeline,
+    prompt: str,
+    negative_prompt: str,
+    task_config: TaskConfig,
+    controlnet: ControlnetArgs | None = None,
+    refiner: RefinerArgs | None = None,
 ) -> Dict[str, Any]:
     call_args: Dict[str, Any] = {
         "num_inference_steps": task_config.steps,
@@ -203,9 +201,9 @@ def get_pipeline_call_args(
 
 
 def run_task(
-        args: InferenceTaskArgs,
-        config: Config | None = None,
-        model_cache: ModelCache | None = None,
+    args: InferenceTaskArgs,
+    config: Config | None = None,
+    model_cache: ModelCache | None = None,
 ) -> List[Image.Image]:
     # Make sure the version of task is supported
     runner_version = Version(pkg_resources.get_distribution("sd_task").version)
@@ -223,27 +221,9 @@ def run_task(
     random.seed(args.task_config.seed)
     np.random.seed(args.task_config.seed)
 
-    model_args: Dict[str, Any] = {
-        "base_model": args.base_model.name,
-        "textual_inversion": args.textual_inversion,
-        "safety_checker": args.task_config.safety_checker,
-    }
+    model_key = generate_model_key(args)
 
-    if args.unet is not None and args.unet != "":
-        model_args["unet"] = args.unet
-    if args.lora is not None and args.lora.model != "":
-        model_args["lora_model_name"] = args.lora.model
-        model_args["lora_weight"] = args.lora.weight
-    if args.controlnet is not None and args.controlnet != "":
-        model_args["controlnet_model_name"] = args.controlnet.model
-    if args.vae is not None and args.vae != "":
-        model_args["vae"] = args.vae
-    if args.refiner is not None and args.refiner.model != "":
-        model_args["refiner_model_name"] = args.refiner.model
-
-    if model_cache is not None and model_cache.has(model_args):
-        pipeline, refiner = model_cache.get(model_args)
-    else:
+    def model_loader():
         log("Check the model cache and download the models")
 
         with wrap_download_error():
@@ -260,9 +240,13 @@ def run_task(
             pipeline, refiner = prepare_pipeline(
                 cache_dir=config.data_dir.models.huggingface, args=args
             )
-        if model_cache is not None:
-            model_cache.set(model_args, (pipeline, refiner))
         log("The pipeline has been successfully loaded")
+        return pipeline, refiner
+
+    if model_cache is not None:
+        pipeline, refiner = model_cache.load(model_key, model_loader)
+    else:
+        pipeline, refiner = model_loader()
 
     generated_images = []
 
