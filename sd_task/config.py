@@ -73,6 +73,7 @@ class DataDirConfig(BaseModel):
 
 class ModelConfig(BaseModel):
     id: str
+    variant: str | None = "fp16"
 
 
 class PreloadedModelsConfig(BaseModel):
