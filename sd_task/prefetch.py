@@ -19,7 +19,7 @@ def prefetch_models(config: Config | None = None):
                 "proxy": config.proxy
             }
 
-            check_and_download_hf_pipeline(model_config.id, "fp16", **call_args)
+            check_and_download_hf_pipeline(model_config.id, model_config.variant, **call_args)
             log("Successfully preloaded base model: " + model_config.id)
 
     # controlnet models
