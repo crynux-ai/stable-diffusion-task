@@ -2,10 +2,12 @@ import hashlib
 import json
 from typing import Any, Dict
 
-from sd_task.inference_task_args.task_args import InferenceTaskArgs
+from sd_task.inference_task_args.task_args import InferenceTaskArgs, BaseModelArgs
 
 
 def generate_model_key(args: InferenceTaskArgs) -> str:
+    assert isinstance(args.base_model, BaseModelArgs)
+
     model_args: Dict[str, Any] = {
         "base_model": args.base_model.name,
         "textual_inversion": args.textual_inversion,

@@ -1,5 +1,5 @@
 from annotated_types import Gt, Ge, Le, Lt
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing_extensions import Annotated
 from typing import Union
 
@@ -37,8 +37,8 @@ class BaseModelArgs(BaseModel):
 
 
 class InferenceTaskArgs(BaseModel):
-    version: VersionString
-    base_model: BaseModelArgs
+    version: VersionString = VersionString.V1_0_0
+    base_model: BaseModelArgs | NonEmptyString
     unet: str = ""
     prompt: NonEmptyString
     negative_prompt: str = ""
@@ -53,3 +53,10 @@ class InferenceTaskArgs(BaseModel):
     vae: str = ""
     refiner: RefinerArgs | None = None
     textual_inversion: str = ""
+
+    @field_validator("base_model", mode="before")
+    @classmethod
+    def convert_base_model_args(cls, v) -> BaseModelArgs:
+        if isinstance(v, str):
+            return BaseModelArgs(name=v)
+        return v
