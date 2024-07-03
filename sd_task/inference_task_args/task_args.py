@@ -1,7 +1,7 @@
 from annotated_types import Gt, Ge, Le, Lt
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 from typing_extensions import Annotated
-from typing import Union
+from typing import Any, Union
 
 from .controlnet_args import ControlnetArgs
 from .scheduler_args import DPMSolverMultistep, EulerAncestralDiscrete, LCM
@@ -53,10 +53,7 @@ class InferenceTaskArgs(BaseModel):
     vae: str = ""
     refiner: RefinerArgs | None = None
     textual_inversion: str = ""
-
-    @field_validator("base_model", mode="before")
-    @classmethod
-    def convert_base_model_args(cls, v) -> BaseModelArgs:
-        if isinstance(v, str):
-            return BaseModelArgs(name=v)
-        return v
+    
+    def model_post_init(self, __context: Any) -> None:
+        if isinstance(self.base_model, str):
+            self.base_model = BaseModelArgs(name=self.base_model)
