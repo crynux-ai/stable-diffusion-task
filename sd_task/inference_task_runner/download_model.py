@@ -173,14 +173,28 @@ def check_and_download_hf_pipeline(
     hf_model_cache_dir = kwargs.pop("hf_model_cache_dir")
     proxy = kwargs.pop("proxy")
 
-    with requests_proxy_session(proxy) as proxies:
+    def _download(call_args):
+        with requests_proxy_session(proxy) as proxies:
+            call_args["proxies"] = proxies
+            DiffusionPipeline.download(model_name, **call_args)
+
+    try:
         call_args = {
             "cache_dir": hf_model_cache_dir,
             "resume_download": True,
             "variant": variant,
-            "proxies": proxies,
         }
-        DiffusionPipeline.download(model_name, **call_args)
+        _download(call_args)
+    except ValueError as e:
+        if "no variant default" in str(e):
+            call_args = {
+                "cache_dir": hf_model_cache_dir,
+                "resume_download": True,
+            }
+            _download(call_args)
+        else:
+            raise e
+
     return model_name
 
 
