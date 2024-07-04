@@ -11,7 +11,7 @@ from diffusers import (AutoencoderKL, AutoPipelineForText2Image,
 from packaging.version import Version
 from PIL import Image
 
-from sd_task import utils
+from sd_task import utils, version
 from sd_task.cache import ModelCache
 from sd_task.config import Config, get_config
 from sd_task.inference_task_args.controlnet_args import ControlnetArgs
@@ -201,7 +201,7 @@ def run_task(
     model_cache: ModelCache | None = None,
 ) -> List[Image.Image]:
     # Make sure the version of task is supported
-    runner_version = Version(pkg_resources.get_distribution("sd_task").version)
+    runner_version = Version(version())
     task_version = Version(args.version)
 
     if runner_version < task_version:
