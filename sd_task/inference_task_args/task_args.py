@@ -1,7 +1,7 @@
 from annotated_types import Gt, Ge, Le, Lt
 from pydantic import BaseModel, Field
 from typing_extensions import Annotated
-from typing import Union
+from typing import Any, Union
 
 from .controlnet_args import ControlnetArgs
 from .scheduler_args import DPMSolverMultistep, EulerAncestralDiscrete, LCM
@@ -37,8 +37,8 @@ class BaseModelArgs(BaseModel):
 
 
 class InferenceTaskArgs(BaseModel):
-    version: VersionString
-    base_model: BaseModelArgs
+    version: VersionString = VersionString.V1_0_0
+    base_model: BaseModelArgs | NonEmptyString
     unet: str = ""
     prompt: NonEmptyString
     negative_prompt: str = ""
@@ -53,3 +53,7 @@ class InferenceTaskArgs(BaseModel):
     vae: str = ""
     refiner: RefinerArgs | None = None
     textual_inversion: str = ""
+    
+    def model_post_init(self, __context: Any) -> None:
+        if isinstance(self.base_model, str):
+            self.base_model = BaseModelArgs(name=self.base_model)

@@ -6,7 +6,7 @@ from contextlib import contextmanager
 from diffusers.utils import SAFETENSORS_WEIGHTS_NAME, WEIGHTS_NAME
 from sd_task.config import ProxyConfig
 from tqdm import tqdm
-from sd_task.inference_task_args.task_args import InferenceTaskArgs
+from sd_task.inference_task_args.task_args import InferenceTaskArgs, BaseModelArgs
 from huggingface_hub import hf_hub_download, model_info
 from huggingface_hub.utils import EntryNotFoundError
 from typing import Callable, Union
@@ -19,6 +19,7 @@ def check_and_prepare_models(
         task_args: InferenceTaskArgs,
         **kwargs):
 
+    assert isinstance(task_args.base_model, BaseModelArgs)
     task_args.base_model.name = check_and_download_hf_pipeline(
         task_args.base_model.name,
         task_args.base_model.variant,
@@ -164,7 +165,7 @@ def check_and_download_external_model(
 
 def check_and_download_hf_pipeline(
     model_name: str,
-    variant: str,
+    variant: str | None,
     **kwargs
 ) -> str:
     log("Check and download the Huggingface pipeline: " + model_name)
@@ -172,14 +173,28 @@ def check_and_download_hf_pipeline(
     hf_model_cache_dir = kwargs.pop("hf_model_cache_dir")
     proxy = kwargs.pop("proxy")
 
-    with requests_proxy_session(proxy) as proxies:
+    def _download(call_args):
+        with requests_proxy_session(proxy) as proxies:
+            call_args["proxies"] = proxies
+            DiffusionPipeline.download(model_name, **call_args)
+
+    try:
         call_args = {
             "cache_dir": hf_model_cache_dir,
             "resume_download": True,
             "variant": variant,
-            "proxies": proxies,
         }
-        DiffusionPipeline.download(model_name, **call_args)
+        _download(call_args)
+    except ValueError as e:
+        if "no variant default" in str(e):
+            call_args = {
+                "cache_dir": hf_model_cache_dir,
+                "resume_download": True,
+            }
+            _download(call_args)
+        else:
+            raise e
+
     return model_name
 
 

@@ -34,4 +34,5 @@ NonEmptyString = Annotated[
 
 
 class VersionString(str, Enum):
+    V1_0_0 = '1.0.0'
     V2_0_0 = '2.0.0'

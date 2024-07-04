@@ -11,12 +11,12 @@ from diffusers import (AutoencoderKL, AutoPipelineForText2Image,
 from packaging.version import Version
 from PIL import Image
 
-from sd_task import utils
+from sd_task import utils, version
 from sd_task.cache import ModelCache
 from sd_task.config import Config, get_config
 from sd_task.inference_task_args.controlnet_args import ControlnetArgs
 from sd_task.inference_task_args.task_args import (InferenceTaskArgs,
-                                                   RefinerArgs, TaskConfig)
+                                                   RefinerArgs, TaskConfig, BaseModelArgs)
 
 from .controlnet import add_controlnet_pipeline_call_args
 from .download_model import check_and_prepare_models
@@ -28,14 +28,8 @@ from .prompt import (add_prompt_pipeline_call_args,
                      add_prompt_refiner_sdxl_call_args)
 from .scheduler import add_scheduler_pipeline_args
 
-if utils.get_accelerator() == "cuda":
-    # Use deterministic algorithms for reproducibility
-    os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":16:8"
-    torch.backends.cudnn.benchmark = False
-    torch.use_deterministic_algorithms(True)
 
-
-def get_pipeline_init_args(cache_dir: str, safety_checker: bool = True, variant="fp16"):
+def get_pipeline_init_args(cache_dir: str, safety_checker: bool = True, variant: str | None ="fp16"):
     init_args = {
         "torch_dtype": torch.float16,
         "cache_dir": cache_dir,
@@ -52,6 +46,7 @@ def get_pipeline_init_args(cache_dir: str, safety_checker: bool = True, variant=
 
 
 def prepare_pipeline(cache_dir: str, args: InferenceTaskArgs):
+    assert isinstance(args.base_model, BaseModelArgs)
     pipeline_args = get_pipeline_init_args(
         cache_dir, args.task_config.safety_checker, args.base_model.variant
     )
@@ -206,11 +201,17 @@ def run_task(
     model_cache: ModelCache | None = None,
 ) -> List[Image.Image]:
     # Make sure the version of task is supported
-    runner_version = Version(pkg_resources.get_distribution("sd_task").version)
+    runner_version = Version(version())
     task_version = Version(args.version)
 
     if runner_version < task_version:
         raise TaskVersionNotSupported()
+
+    if utils.get_accelerator() == "cuda":
+        # Use deterministic algorithms for reproducibility
+        os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":16:8"
+        torch.backends.cudnn.benchmark = False
+        torch.use_deterministic_algorithms(True)
 
     if config is None:
         config = get_config()
@@ -282,7 +283,14 @@ def run_task(
                 image = refiner(**refiner_call_args)
 
             generated_images.append(image.images[0])
+            del image
+
+        del refiner_call_args
+        del call_args
 
         log("The images generation is finished")
+
+    if utils.get_accelerator() == "cuda":
+        torch.cuda.empty_cache()
 
     return generated_images

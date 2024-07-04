@@ -33,7 +33,7 @@ class YamlConfigSettingsSource(PydanticBaseSettingsSource):
                     self._yaml_data = yaml.safe_load(f)
             else:
                 self._yaml_data = {}
-        return self._yaml_data
+        return self._yaml_data # type: ignore
 
     def get_field_value(
         self, field: FieldInfo, field_name: str
@@ -77,9 +77,9 @@ class ModelConfig(BaseModel):
 
 
 class PreloadedModelsConfig(BaseModel):
-    base: List[ModelConfig] | None
-    controlnet: List[ModelConfig] | None
-    vae: List[ModelConfig] | None
+    base: List[ModelConfig] | None = None
+    controlnet: List[ModelConfig] | None = None
+    vae: List[ModelConfig] | None = None
 
 
 class ProxyConfig(BaseModel):
@@ -95,21 +95,7 @@ class Config(BaseSettings):
             huggingface="models/huggingface", external="models/external"
         )
     )
-    preloaded_models: PreloadedModelsConfig = PreloadedModelsConfig(
-        base=[
-            ModelConfig(id="runwayml/stable-diffusion-v1-5"),
-            ModelConfig(id="emilianJR/chilloutmix_NiPrunedFp32Fix"),
-            ModelConfig(id="stabilityai/stable-diffusion-xl-base-1.0"),
-            ModelConfig(
-                id="stabilityai/stable-diffusion-xl-refiner-1.0"),
-        ],
-        controlnet=[
-            ModelConfig(id="lllyasviel/sd-controlnet-canny"),
-            ModelConfig(id="lllyasviel/control_v11p_sd15_openpose"),
-            ModelConfig(id="diffusers/controlnet-canny-sdxl-1.0"),
-        ],
-        vae=[],
-    )
+    preloaded_models: PreloadedModelsConfig = PreloadedModelsConfig()
     proxy: ProxyConfig | None = None
 
     model_config = YamlSettingsConfigDict(
