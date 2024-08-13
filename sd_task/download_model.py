@@ -1,96 +1,34 @@
-import validators
 import hashlib
 import os
-import requests
 from contextlib import contextmanager
-from diffusers.utils import SAFETENSORS_WEIGHTS_NAME, WEIGHTS_NAME
-from sd_task.config import ProxyConfig
-from tqdm import tqdm
-from sd_task.inference_task_args.task_args import InferenceTaskArgs, BaseModelArgs
+from typing import Callable, Union
+
+import requests
+import validators
+from diffusers import DiffusionPipeline
 from huggingface_hub import hf_hub_download, model_info
 from huggingface_hub.utils import EntryNotFoundError
-from typing import Callable, Union
-from diffusers import AutoencoderKL, ControlNetModel, DiffusionPipeline, UNet2DConditionModel
+from tqdm import tqdm
 
-from .log import log
-
-
-def check_and_prepare_models(
-        task_args: InferenceTaskArgs,
-        **kwargs):
-
-    assert isinstance(task_args.base_model, BaseModelArgs)
-    task_args.base_model.name = check_and_download_hf_pipeline(
-        task_args.base_model.name,
-        task_args.base_model.variant,
-        **kwargs
-    )
-
-    if task_args.refiner is not None and task_args.refiner.model != "":
-        task_args.refiner.model = check_and_download_hf_pipeline(
-            task_args.refiner.model,
-            task_args.refiner.variant,
-            **kwargs
-        )
-
-    if task_args.unet is not None and task_args.unet != "":
-        task_args.unet, _ = check_and_download_model_by_name(
-            task_args.unet,
-            UNet2DConditionModel.load_config,
-            [SAFETENSORS_WEIGHTS_NAME, WEIGHTS_NAME],
-            False,
-            **kwargs
-        )
-
-    if task_args.vae != "":
-        task_args.vae, _ = check_and_download_model_by_name(
-            task_args.vae,
-            AutoencoderKL.load_config,
-            [SAFETENSORS_WEIGHTS_NAME, WEIGHTS_NAME],
-            False,
-            **kwargs
-        )
-
-    if task_args.controlnet is not None:
-        task_args.controlnet.model, _ = check_and_download_model_by_name(
-            task_args.controlnet.model,
-            ControlNetModel.load_config,
-            [SAFETENSORS_WEIGHTS_NAME, WEIGHTS_NAME],
-            False,
-            **kwargs
-        )
-
-    if task_args.lora is not None:
-        task_args.lora.model, task_args.lora.weight_file_name = check_and_download_model_by_name(
-            task_args.lora.model,
-            None,
-            [],
-            True,
-            **kwargs
-        )
-
-    if task_args.textual_inversion != "":
-        task_args.textual_inversion, _ = check_and_download_model_by_name(
-            task_args.textual_inversion,
-            None,
-            [],
-            True,
-            **kwargs
-        )
+from sd_task.config import ProxyConfig
+from sd_task.log import log
 
 
 def check_and_download_model_by_name(
-        model_name: str,
-        loader: Union[Callable, None],
-        weights_names: list[str],
-        guess_weights_name: bool,
-        **kwargs) -> tuple[str, str]:
+    model_name: str,
+    loader: Union[Callable, None],
+    weights_names: list[str],
+    guess_weights_name: bool,
+    **kwargs,
+) -> tuple[str, str]:
     hf_model_cache_dir = kwargs.pop("hf_model_cache_dir")
     external_model_cache_dir = kwargs.pop("external_model_cache_dir")
     proxy = kwargs.pop("proxy")
 
     if validators.url(model_name):
-        return check_and_download_external_model(model_name, external_model_cache_dir, proxy)
+        return check_and_download_external_model(
+            model_name, external_model_cache_dir, proxy
+        )
     else:
         return check_and_download_hf_model(
             model_name,
@@ -98,13 +36,12 @@ def check_and_download_model_by_name(
             weights_names,
             guess_weights_name,
             hf_model_cache_dir,
-            proxy)
+            proxy,
+        )
 
 
 def check_and_download_external_model(
-        model_name: str,
-        external_cache_dir: str,
-        proxy: ProxyConfig | None
+    model_name: str, external_cache_dir: str, proxy: ProxyConfig | None
 ) -> tuple[str, str]:
 
     log("Check and download the external model file: " + model_name)
@@ -112,7 +49,7 @@ def check_and_download_external_model(
     weight_file_name = "model.safetensors"
 
     m = hashlib.sha256()
-    m.update(model_name.encode('utf-8'))
+    m.update(model_name.encode("utf-8"))
     url_hash = m.hexdigest()
 
     model_folder = os.path.join(external_cache_dir, url_hash)
@@ -135,20 +72,19 @@ def check_and_download_external_model(
 
     try:
         with requests_proxy_session(proxy) as proxies:
-            resp = requests.get(
-                model_name,
-                stream=True,
-                timeout=5,
-                proxies=proxies
-            )
+            resp = requests.get(model_name, stream=True, timeout=5, proxies=proxies)
 
             resp.raise_for_status()
 
-            total_bytes = int(resp.headers.get('content-length', 0))
+            total_bytes = int(resp.headers.get("content-length", 0))
 
-            with tqdm.wrapattr(open(model_file, "wb"), "write",
-                            miniters=1, desc=model_file,
-                            total=total_bytes) as f_out:
+            with tqdm.wrapattr(
+                open(model_file, "wb"),
+                "write",
+                miniters=1,
+                desc=model_file,
+                total=total_bytes,
+            ) as f_out:
                 for chunk in resp.iter_content(chunk_size=1024):
                     if chunk:
                         f_out.write(chunk)
@@ -164,9 +100,7 @@ def check_and_download_external_model(
 
 
 def check_and_download_hf_pipeline(
-    model_name: str,
-    variant: str | None,
-    **kwargs
+    model_name: str, variant: str | None, **kwargs
 ) -> str:
     log("Check and download the Huggingface pipeline: " + model_name)
 
@@ -199,13 +133,12 @@ def check_and_download_hf_pipeline(
 
 
 def check_and_download_hf_model(
-        model_name: str,
-        config_loader: Union[Callable, None],
-        weights_names: list[str],
-        guess_weight_name: bool,
-        hf_model_cache_dir: str,
-        proxy: ProxyConfig | None
-
+    model_name: str,
+    config_loader: Union[Callable, None],
+    weights_names: list[str],
+    guess_weight_name: bool,
+    hf_model_cache_dir: str,
+    proxy: ProxyConfig | None,
 ) -> tuple[str, str]:
     log("Check and download the Huggingface model file: " + model_name)
     weight_file_name = ""
@@ -249,7 +182,9 @@ def check_and_download_hf_model(
                             pass
 
         if model_file is None and guess_weight_name:
-            weight_name = best_guess_weight_name(model_name, file_extension=".safetensors")
+            weight_name = best_guess_weight_name(
+                model_name, file_extension=".safetensors"
+            )
 
             if weight_name is None:
                 weight_name = best_guess_weight_name(model_name, file_extension=".bin")
@@ -291,7 +226,7 @@ def get_requests_proxy_url(proxy: ProxyConfig | None) -> str | None:
         return proxy_str
     else:
         return None
-    
+
 
 @contextmanager
 def requests_proxy_session(proxy: ProxyConfig | None):
@@ -328,17 +263,24 @@ def add_variant(weights_name: str, variant: str | None = None) -> str:
     return weights_name
 
 
-def best_guess_weight_name(pretrained_model_name_or_path_or_dict, file_extension=".safetensors") -> str | None:
+def best_guess_weight_name(
+    pretrained_model_name_or_path_or_dict, file_extension=".safetensors"
+) -> str | None:
 
     files_in_repo = model_info(pretrained_model_name_or_path_or_dict).siblings
-    targeted_files = [f.rfilename for f in files_in_repo if f.rfilename.endswith(file_extension)]
+    targeted_files = [
+        f.rfilename for f in files_in_repo if f.rfilename.endswith(file_extension)
+    ]
 
     if len(targeted_files) == 0:
         return
 
     disallowed_substrings = {"scheduler", "optimizer", "checkpoint"}
     targeted_files = list(
-        filter(lambda x: all(substring not in x for substring in disallowed_substrings), targeted_files)
+        filter(
+            lambda x: all(substring not in x for substring in disallowed_substrings),
+            targeted_files,
+        )
     )
 
     if len(targeted_files) > 1:

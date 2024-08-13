@@ -1,4 +1,3 @@
-import logging
 import math
 import os
 import random
@@ -34,12 +33,12 @@ from diffusers.utils import convert_state_dict_to_diffusers
 from diffusers.utils.torch_utils import is_compiled_module
 
 from sd_task.config import Config, get_config
-from sd_task.finetune_task_args import FinetuneLoraTaskArgs
+from sd_task.task_args import FinetuneLoraTaskArgs
 
 _logger = get_logger(__name__, log_level="INFO")
 
 
-def run_task(args: FinetuneLoraTaskArgs, output_dir: str, config: Config | None = None):
+def run_finetune_lora_task(args: FinetuneLoraTaskArgs, output_dir: str, config: Config | None = None):
     # enable deterministic algorithms
     os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
     os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":16:8"

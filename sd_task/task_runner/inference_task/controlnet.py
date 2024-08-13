@@ -4,7 +4,7 @@ from io import BytesIO
 
 from PIL import Image
 
-from sd_task.inference_task_args.controlnet_args import ControlnetArgs
+from sd_task.task_args.inference_task import ControlnetArgs
 
 
 def add_controlnet_pipeline_call_args(call_args: dict, controlnet: ControlnetArgs, image_width: int, image_height: int):

@@ -2,7 +2,8 @@ import hashlib
 import json
 from typing import Any, Dict
 
-from sd_task.inference_task_args.task_args import InferenceTaskArgs, BaseModelArgs
+from sd_task.task_args import InferenceTaskArgs
+from sd_task.task_args.inference_task import BaseModelArgs
 
 
 def generate_model_key(args: InferenceTaskArgs) -> str:

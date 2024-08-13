@@ -3,7 +3,6 @@ import random
 from typing import Any, Dict, List
 
 import numpy as np
-import pkg_resources
 import torch
 from diffusers import (AutoencoderKL, AutoPipelineForText2Image,
                        ControlNetModel, DiffusionPipeline,
@@ -14,22 +13,24 @@ from PIL import Image
 from sd_task import utils, version
 from sd_task.cache import ModelCache
 from sd_task.config import Config, get_config
-from sd_task.inference_task_args.controlnet_args import ControlnetArgs
-from sd_task.inference_task_args.task_args import (InferenceTaskArgs,
-                                                   RefinerArgs, TaskConfig, BaseModelArgs)
+from sd_task.task_args.inference_task import (BaseModelArgs, ControlnetArgs,
+                                              InferenceTaskArgs, RefinerArgs,
+                                              TaskConfig)
+from sd_task.log import log
 
 from .controlnet import add_controlnet_pipeline_call_args
 from .download_model import check_and_prepare_models
 from .errors import (TaskVersionNotSupported, wrap_download_error,
                      wrap_execution_error)
 from .key import generate_model_key
-from .log import log
 from .prompt import (add_prompt_pipeline_call_args,
                      add_prompt_refiner_sdxl_call_args)
 from .scheduler import add_scheduler_pipeline_args
 
 
-def get_pipeline_init_args(cache_dir: str, safety_checker: bool = True, variant: str | None ="fp16"):
+def get_pipeline_init_args(
+    cache_dir: str, safety_checker: bool = True, variant: str | None = "fp16"
+):
     init_args = {
         "torch_dtype": torch.float16,
         "cache_dir": cache_dir,
@@ -195,7 +196,7 @@ def get_pipeline_call_args(
     return call_args
 
 
-def run_task(
+def run_inference_task(
     args: InferenceTaskArgs,
     config: Config | None = None,
     model_cache: ModelCache | None = None,

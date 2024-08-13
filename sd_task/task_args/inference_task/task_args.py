@@ -5,7 +5,8 @@ from typing import Any, Union
 
 from .controlnet_args import ControlnetArgs
 from .scheduler_args import DPMSolverMultistep, EulerAncestralDiscrete, LCM
-from .types import FloatFractionAsInt, NonEmptyString, VersionString
+from .types import FloatFractionAsInt, NonEmptyString
+from ..version import VersionString
 
 
 class RefinerArgs(BaseModel):
