@@ -19,7 +19,6 @@ class TaggerTaskArgs(BaseModel):
     image_dataurl: str
     model: TaggerModel = "WD14 moat tagger v2"
     threshold: float = 0.35
-    tag_frac_threshold: float = 0.05
     count_threshold: int = 100
     additional_tags: List[str] = []
     search_tags: List[str] = []
