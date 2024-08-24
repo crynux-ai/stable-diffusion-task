@@ -1,7 +1,4 @@
-import base64
 import os
-import re
-from io import BytesIO
 from typing import cast
 
 import torch
@@ -51,8 +48,7 @@ def run_remove_background_task(
     else:
         session = load_model()
 
-    image_data = re.sub("^data:image/.+;base64,", "", args.image_dataurl)
-    image = Image.open(BytesIO(base64.b64decode(image_data)))
+    image = utils.decode_image_dataurl(args.image_dataurl)
 
     output = remove(image,
         alpha_matting=args.alpha_matting,

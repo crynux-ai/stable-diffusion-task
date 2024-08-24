@@ -2,7 +2,7 @@ from typing import Literal, Union
 
 from pydantic import BaseModel, Field
 
-from .types import FloatFractionAsInt, NonEmptyString
+from ..types import FloatFractionAsInt, NonEmptyString
 
 
 class CannyArgs(BaseModel):

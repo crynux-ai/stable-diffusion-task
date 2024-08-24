@@ -1,10 +1,8 @@
-import base64
 import re
-from io import BytesIO
 from typing import Callable, Dict
 
-from PIL import Image
 
+from sd_task import utils
 from sd_task.cache import ModelCache
 from sd_task.config import Config, get_config
 from sd_task.task_args.tagger import TaggerTaskArgs
@@ -128,9 +126,7 @@ def run_tagger_task(
     else:
         interrogator = load_model()
 
-    image_data = re.sub("^data:image/.+;base64,", "", args.image_dataurl)
-    image = Image.open(BytesIO(base64.b64decode(image_data)))
-
+    image = utils.decode_image_dataurl(args.image_dataurl)
     ratings, tags = interrogator.interrogate(image)
 
     ratings, tags, discarded_tags = finalize(args, tags, ratings)
