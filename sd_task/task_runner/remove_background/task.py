@@ -26,7 +26,7 @@ def run_remove_background_task(
     torch.backends.cuda.matmul.allow_tf32 = False
 
     def load_model():
-        os.environ["U2NET"] = config.data_dir.models.external
+        os.environ["U2NET_HOME"] = config.data_dir.models.external
         providers = []
         if utils.get_accelerator() == "cuda":
             providers.append(

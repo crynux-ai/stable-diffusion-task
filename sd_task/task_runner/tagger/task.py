@@ -79,6 +79,9 @@ def finalize(args: TaggerTaskArgs, tags: Dict[str, float], ratings: Dict[str, fl
     _ratings = sorted(ratings.items(), key=lambda x: x[1], reverse=True)
     ratings = {k: v for k, v in _ratings}
 
+    for tag in args.additional_tags:
+        result_tags[tag] = 1.0
+
     max_cnt = args.count_threshold - len(args.additional_tags)
     count = 0
     for tag, val in _tags:
@@ -96,10 +99,6 @@ def finalize(args: TaggerTaskArgs, tags: Dict[str, float], ratings: Dict[str, fl
             count += 1
             if tag not in args.additional_tags:
                 result_tags[tag] = val
-            
-
-    for tag in args.additional_tags:
-        result_tags[tag] = 1.0
 
     return ratings, result_tags, discarded_tags
 

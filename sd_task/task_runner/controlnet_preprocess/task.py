@@ -21,7 +21,7 @@ def run_controlnet_preprocess_task(
     image = utils.decode_image_dataurl(args.image_dataurl)
 
     args_dict = {}
-    preprocess_args = getattr(args.preprocess, "args")
+    preprocess_args = getattr(args.preprocess, "args", None)
     if preprocess_args is not None:
         args_dict = preprocess_args.model_dump()
 
