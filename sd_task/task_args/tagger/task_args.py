@@ -1,7 +1,8 @@
-from typing import Literal, List
+from typing import List, Literal, Optional
 
-from pydantic import BaseModel
-
+from PIL.Image import Image
+from pydantic import BaseModel, Field, ConfigDict
+from pydantic.json_schema import SkipJsonSchema
 
 TaggerModel = Literal[
     "WD14 ViT v1",
@@ -15,8 +16,12 @@ TaggerModel = Literal[
     "ML-Danbooru TResNet-D 6-30000",
 ]
 
+
 class TaggerTaskArgs(BaseModel):
-    image_dataurl: str
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    image_dataurl: str = ""
+    image: SkipJsonSchema[Optional[Image]] = Field(None, exclude=True, init_var=True)
     model: TaggerModel = "WD14 moat tagger v2"
     threshold: float = 0.35
     count_threshold: int = 100

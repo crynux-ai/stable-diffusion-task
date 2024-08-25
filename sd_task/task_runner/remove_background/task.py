@@ -18,6 +18,13 @@ def run_remove_background_task(
     if config is None:
         config = get_config()
 
+    if args.image is not None:
+        image = args.image
+    elif len(args.image_dataurl) > 0:
+        image = utils.decode_image_dataurl(args.image_dataurl)
+    else:
+        raise ValueError("Image and image_dataurl cannot be both empty")
+
     os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
     os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":16:8"
     torch.use_deterministic_algorithms(True)
@@ -47,8 +54,6 @@ def run_remove_background_task(
         session = model_cache.load("remove_bg_session", load_model)
     else:
         session = load_model()
-
-    image = utils.decode_image_dataurl(args.image_dataurl)
 
     output = remove(image,
         alpha_matting=args.alpha_matting,

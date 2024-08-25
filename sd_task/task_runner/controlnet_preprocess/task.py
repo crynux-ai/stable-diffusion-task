@@ -18,7 +18,12 @@ def run_controlnet_preprocess_task(
 ):
     if config is None:
         config = get_config()
-    image = utils.decode_image_dataurl(args.image_dataurl)
+    if args.image is not None:
+        image = args.image
+    elif len(args.image_dataurl) > 0:
+        image = utils.decode_image_dataurl(args.image_dataurl)
+    else:
+        raise ValueError("Image and image_dataurl cannot be both empty")
 
     args_dict = {}
     preprocess_args = getattr(args.preprocess, "args", None)

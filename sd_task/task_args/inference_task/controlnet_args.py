@@ -1,6 +1,8 @@
-from typing import Literal, Union
+from typing import Literal, Optional, Union
 
-from pydantic import BaseModel, Field
+from PIL.Image import Image
+from pydantic import BaseModel, Field, ConfigDict
+from pydantic.json_schema import SkipJsonSchema
 
 from ..types import FloatFractionAsInt, NonEmptyString
 
@@ -11,28 +13,28 @@ class CannyArgs(BaseModel):
 
 
 class PreprocessMethodCanny(BaseModel):
-    method: Literal['canny'] = "canny"
+    method: Literal["canny"] = "canny"
     args: CannyArgs | None = None
 
 
 class PreprocessMethodScribbleHED(BaseModel):
-    method: Literal['scribble_hed'] = "scribble_hed"
+    method: Literal["scribble_hed"] = "scribble_hed"
 
 
 class PreprocessMethodSoftEdgeHED(BaseModel):
-    method: Literal['softedge_hed'] = "softedge_hed"
+    method: Literal["softedge_hed"] = "softedge_hed"
 
 
 class PreprocessMethodScribbleHEDSafe(BaseModel):
-    method: Literal['scribble_hedsafe'] = "scribble_hedsafe"
+    method: Literal["scribble_hedsafe"] = "scribble_hedsafe"
 
 
 class PreprocessMethodSoftEdgeHEDSafe(BaseModel):
-    method: Literal['softedge_hedsafe'] = "softedge_hedsafe"
+    method: Literal["softedge_hedsafe"] = "softedge_hedsafe"
 
 
 class PreprocessMethodDepthMidas(BaseModel):
-    method: Literal['depth_midas'] = "depth_midas"
+    method: Literal["depth_midas"] = "depth_midas"
 
 
 class MLSDArgs(BaseModel):
@@ -41,32 +43,32 @@ class MLSDArgs(BaseModel):
 
 
 class PreprocessMethodMLSD(BaseModel):
-    method: Literal['mlsd'] = 'mlsd'
+    method: Literal["mlsd"] = "mlsd"
     args: MLSDArgs | None = None
 
 
 class PreprocessMethodOpenPoseBodyOnly(BaseModel):
-    method: Literal['openpose'] = 'openpose'
+    method: Literal["openpose"] = "openpose"
 
 
 class PreprocessMethodOpenPoseFaceAndBody(BaseModel):
-    method: Literal['openpose_face'] = 'openpose_face'
+    method: Literal["openpose_face"] = "openpose_face"
 
 
 class PreprocessMethodOpenPoseFaceOnly(BaseModel):
-    method: Literal['openpose_faceonly'] = 'openpose_faceonly'
+    method: Literal["openpose_faceonly"] = "openpose_faceonly"
 
 
 class PreprocessMethodOpenPoseFull(BaseModel):
-    method: Literal['openpose_full'] = 'openpose_full'
+    method: Literal["openpose_full"] = "openpose_full"
 
 
 class PreprocessMethodOpenPoseHand(BaseModel):
-    method: Literal['openpose_hand'] = 'openpose_hand'
+    method: Literal["openpose_hand"] = "openpose_hand"
 
 
 class PreprocessMethodDWPose(BaseModel):
-    method: Literal['dwpose'] = 'dwpose'
+    method: Literal["dwpose"] = "dwpose"
 
 
 class PidiNetArgs(BaseModel):
@@ -74,39 +76,39 @@ class PidiNetArgs(BaseModel):
 
 
 class PreprocessMethodScribblePidiNet(BaseModel):
-    method: Literal['scribble_pidinet'] = 'scribble_pidinet'
+    method: Literal["scribble_pidinet"] = "scribble_pidinet"
     args: PidiNetArgs | None = None
 
 
 class PreprocessMethodSoftEdgePidiNet(BaseModel):
-    method: Literal['softedge_pidinet'] = 'softedge_pidinet'
+    method: Literal["softedge_pidinet"] = "softedge_pidinet"
     args: PidiNetArgs | None = None
 
 
 class PreprocessMethodScribblePidiNetSafe(BaseModel):
-    method: Literal['scribble_pidisafe'] = 'scribble_pidisafe'
+    method: Literal["scribble_pidisafe"] = "scribble_pidisafe"
     args: PidiNetArgs | None = None
 
 
 class PreprocessMethodSoftEdgePidiNetSafe(BaseModel):
-    method: Literal['softedge_pidisafe'] = 'softedge_pidisafe'
+    method: Literal["softedge_pidisafe"] = "softedge_pidisafe"
     args: PidiNetArgs | None = None
 
 
 class PreprocessMethodNormalBAE(BaseModel):
-    method: Literal['normal_bae'] = 'normal_bae'
+    method: Literal["normal_bae"] = "normal_bae"
 
 
 class PreprocessMethodLineartCoarse(BaseModel):
-    method: Literal['lineart_coarse'] = 'lineart_coarse'
+    method: Literal["lineart_coarse"] = "lineart_coarse"
 
 
 class PreprocessMethodLineartRealistic(BaseModel):
-    method: Literal['lineart_realistic'] = 'lineart_realistic'
+    method: Literal["lineart_realistic"] = "lineart_realistic"
 
 
 class PreprocessMethodLineartAnime(BaseModel):
-    method: Literal['lineart_anime'] = 'lineart_anime'
+    method: Literal["lineart_anime"] = "lineart_anime"
 
 
 class DepthZoeArgs(BaseModel):
@@ -114,7 +116,7 @@ class DepthZoeArgs(BaseModel):
 
 
 class PreprocessMethodDepthZoe(BaseModel):
-    method: Literal['depth_zoe'] = 'depth_zoe'
+    method: Literal["depth_zoe"] = "depth_zoe"
     args: DepthZoeArgs | None = None
 
 
@@ -124,12 +126,12 @@ class LeresArgs(BaseModel):
 
 
 class PreprocessMethodDepthLeres(BaseModel):
-    method: Literal['depth_leres'] = 'depth_leres'
+    method: Literal["depth_leres"] = "depth_leres"
     args: LeresArgs | None = None
 
 
 class PreprocessMethodDepthLeresPP(BaseModel):
-    method: Literal['depth_leres++'] = 'depth_leres++'
+    method: Literal["depth_leres++"] = "depth_leres++"
     args: LeresArgs | None = None
 
 
@@ -140,7 +142,7 @@ class ShuffleArgs(BaseModel):
 
 
 class PreprocessMethodShuffle(BaseModel):
-    method: Literal['shuffle'] = 'shuffle'
+    method: Literal["shuffle"] = "shuffle"
     args: ShuffleArgs | None = None
 
 
@@ -150,13 +152,16 @@ class MediapipeFaceArgs(BaseModel):
 
 
 class PreprocessMethodMediapipeFace(BaseModel):
-    method: Literal['mediapipe_face'] = 'mediapipe_face'
+    method: Literal["mediapipe_face"] = "mediapipe_face"
     args: MediapipeFaceArgs | None = None
 
 
 class ControlnetArgs(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     model: NonEmptyString
-    image_dataurl: NonEmptyString
+    image_dataurl: str = ""
+    image: SkipJsonSchema[Optional[Image]] = Field(None, exclude=True, init_var=True)
     weight: FloatFractionAsInt = 70
     preprocess: Union[
         PreprocessMethodCanny,
@@ -183,5 +188,5 @@ class ControlnetArgs(BaseModel):
         PreprocessMethodDepthLeresPP,
         PreprocessMethodShuffle,
         PreprocessMethodMediapipeFace,
-        None
+        None,
     ] = Field(discriminator="method", default=None)

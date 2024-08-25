@@ -1,6 +1,8 @@
-from typing import Literal, Union
+from typing import Literal, Optional, Union
 
-from pydantic import BaseModel
+from PIL.Image import Image
+from pydantic import BaseModel, ConfigDict, Field
+from pydantic.json_schema import SkipJsonSchema
 
 from ..types import FloatFractionAsInt
 
@@ -155,30 +157,33 @@ class PreprocessMethodMediapipeFace(BaseModel):
 
 
 class ControlnetPreprocessTaskArgs(BaseModel):
-    image_dataurl: str
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    image_dataurl: str = ""
+    image: SkipJsonSchema[Optional[Image]] = Field(None, exclude=True, init_var=True)
     preprocess: Union[
-    PreprocessMethodCanny,
-    PreprocessMethodScribbleHED,
-    PreprocessMethodScribbleHEDSafe,
-    PreprocessMethodSoftEdgeHEDSafe,
-    PreprocessMethodDepthMidas,
-    PreprocessMethodMLSD,
-    PreprocessMethodOpenPoseBodyOnly,
-    PreprocessMethodOpenPoseFaceAndBody,
-    PreprocessMethodOpenPoseFaceOnly,
-    PreprocessMethodOpenPoseFull,
-    PreprocessMethodOpenPoseHand,
-    PreprocessMethodScribblePidiNet,
-    PreprocessMethodSoftEdgePidiNet,
-    PreprocessMethodScribblePidiNetSafe,
-    PreprocessMethodSoftEdgePidiNetSafe,
-    PreprocessMethodNormalBAE,
-    PreprocessMethodLineartCoarse,
-    PreprocessMethodLineartRealistic,
-    PreprocessMethodLineartAnime,
-    PreprocessMethodDepthZoe,
-    PreprocessMethodDepthLeres,
-    PreprocessMethodDepthLeresPP,
-    PreprocessMethodShuffle,
-    PreprocessMethodMediapipeFace,
-]
+        PreprocessMethodCanny,
+        PreprocessMethodScribbleHED,
+        PreprocessMethodScribbleHEDSafe,
+        PreprocessMethodSoftEdgeHEDSafe,
+        PreprocessMethodDepthMidas,
+        PreprocessMethodMLSD,
+        PreprocessMethodOpenPoseBodyOnly,
+        PreprocessMethodOpenPoseFaceAndBody,
+        PreprocessMethodOpenPoseFaceOnly,
+        PreprocessMethodOpenPoseFull,
+        PreprocessMethodOpenPoseHand,
+        PreprocessMethodScribblePidiNet,
+        PreprocessMethodSoftEdgePidiNet,
+        PreprocessMethodScribblePidiNetSafe,
+        PreprocessMethodSoftEdgePidiNetSafe,
+        PreprocessMethodNormalBAE,
+        PreprocessMethodLineartCoarse,
+        PreprocessMethodLineartRealistic,
+        PreprocessMethodLineartAnime,
+        PreprocessMethodDepthZoe,
+        PreprocessMethodDepthLeres,
+        PreprocessMethodDepthLeresPP,
+        PreprocessMethodShuffle,
+        PreprocessMethodMediapipeFace,
+    ]

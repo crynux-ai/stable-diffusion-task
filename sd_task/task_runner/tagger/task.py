@@ -112,7 +112,14 @@ def run_tagger_task(
         config = get_config()
 
     if args.model not in _interrogators:
-        raise KeyError(f"Unsupported tagger model name: {args.model}")
+        raise ValueError(f"Unsupported tagger model name: {args.model}")
+
+    if args.image is not None:
+        image = args.image
+    elif len(args.image_dataurl) > 0:
+        image = utils.decode_image_dataurl(args.image_dataurl)
+    else:
+        raise ValueError("Image and image_dataurl cannot be both empty")
 
     def load_model():
         interrogator = _interrogators[args.model]()
@@ -125,7 +132,6 @@ def run_tagger_task(
     else:
         interrogator = load_model()
 
-    image = utils.decode_image_dataurl(args.image_dataurl)
     ratings, tags = interrogator.interrogate(image)
 
     ratings, tags, discarded_tags = finalize(args, tags, ratings)
