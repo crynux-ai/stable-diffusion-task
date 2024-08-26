@@ -1,7 +1,4 @@
-import base64
 import os
-import re
-from io import BytesIO
 from typing import cast
 
 import torch
@@ -21,6 +18,13 @@ def run_remove_background_task(
     if config is None:
         config = get_config()
 
+    if args.image is not None:
+        image = args.image
+    elif len(args.image_dataurl) > 0:
+        image = utils.decode_image_dataurl(args.image_dataurl)
+    else:
+        raise ValueError("Image and image_dataurl cannot be both empty")
+
     os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
     os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":16:8"
     torch.use_deterministic_algorithms(True)
@@ -29,7 +33,7 @@ def run_remove_background_task(
     torch.backends.cuda.matmul.allow_tf32 = False
 
     def load_model():
-        os.environ["U2NET"] = config.data_dir.models.external
+        os.environ["U2NET_HOME"] = config.data_dir.models.external
         providers = []
         if utils.get_accelerator() == "cuda":
             providers.append(
@@ -50,9 +54,6 @@ def run_remove_background_task(
         session = model_cache.load("remove_bg_session", load_model)
     else:
         session = load_model()
-
-    image_data = re.sub("^data:image/.+;base64,", "", args.image_dataurl)
-    image = Image.open(BytesIO(base64.b64decode(image_data)))
 
     output = remove(image,
         alpha_matting=args.alpha_matting,

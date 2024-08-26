@@ -1,6 +1,9 @@
-from typing import Literal
+from typing import Literal, Optional
 
-from pydantic import BaseModel
+from PIL.Image import Image
+from pydantic import BaseModel, Field, ConfigDict
+from pydantic.json_schema import SkipJsonSchema
+
 
 RemoveBackgroundModel = Literal[
     "isnet-general-use",
@@ -12,8 +15,12 @@ RemoveBackgroundModel = Literal[
     "silueta",
 ]
 
+
 class RemoveBackgroundTaskArgs(BaseModel):
-    image_dataurl: str
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    image_dataurl: str = ""
+    image: SkipJsonSchema[Optional[Image]] = Field(None, exclude=True, init_var=True)
     model: RemoveBackgroundModel = "u2net"
     return_mask: bool = False
     alpha_matting: bool = False
