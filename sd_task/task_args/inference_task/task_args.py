@@ -29,7 +29,7 @@ class TaskConfig(BaseModel):
     seed: Annotated[int, Ge(0), Lt(2147483648)] = 0
     num_images: Annotated[int, Gt(0), Le(10)] = 6
     safety_checker: bool = True
-    cfg: Annotated[int, Ge(0), Le(20)] = 5
+    cfg: Annotated[float, Ge(0), Le(20)] = 5
 
 
 class BaseModelArgs(BaseModel):
