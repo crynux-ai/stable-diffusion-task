@@ -24,6 +24,7 @@ def check_and_download_model_by_name(
     hf_model_cache_dir = kwargs.pop("hf_model_cache_dir")
     external_model_cache_dir = kwargs.pop("external_model_cache_dir")
     proxy = kwargs.pop("proxy")
+    variant = kwargs.pop("variant", "fp16")
 
     if validators.url(model_name):
         return check_and_download_external_model(
@@ -37,6 +38,7 @@ def check_and_download_model_by_name(
             guess_weights_name,
             hf_model_cache_dir,
             proxy,
+            variant,
         )
 
 
@@ -139,6 +141,7 @@ def check_and_download_hf_model(
     guess_weight_name: bool,
     hf_model_cache_dir: str,
     proxy: ProxyConfig | None,
+    variant: str | None
 ) -> tuple[str, str]:
     log("Check and download the Huggingface model file: " + model_name)
     weight_file_name = ""
@@ -158,7 +161,10 @@ def check_and_download_hf_model(
         for weights_name in weights_names:
             if model_file is None:
                 try:
-                    call_args["filename"] = add_variant(weights_name, "fp16")
+                    if variant is not None:
+                        call_args["filename"] = add_variant(weights_name, variant)
+                    else:
+                        call_args["filename"] = weights_name
                     model_file = hf_hub_download(model_name, **call_args)
                     weight_file_name = call_args["filename"]
                 except EntryNotFoundError:

@@ -160,6 +160,7 @@ class ControlnetArgs(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     model: NonEmptyString
+    variant: str | None = "fp16"
     image_dataurl: str = ""
     image: SkipJsonSchema[Optional[Image]] = Field(None, exclude=True, init_var=True)
     weight: FloatFractionAsInt = 70

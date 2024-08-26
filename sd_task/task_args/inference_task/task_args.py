@@ -11,7 +11,7 @@ from ..version import VersionString
 
 class RefinerArgs(BaseModel):
     model: NonEmptyString
-    variant: str = "fp16"
+    variant: str | None = "fp16"
     denoising_cutoff: FloatFractionAsInt = 80  # Not used if controlnet is enabled
     steps: Annotated[int, Gt(0), Le(100)] = 20
 
@@ -54,7 +54,7 @@ class InferenceTaskArgs(BaseModel):
     vae: str = ""
     refiner: RefinerArgs | None = None
     textual_inversion: str = ""
-    
+
     def model_post_init(self, __context: Any) -> None:
         if isinstance(self.base_model, str):
             self.base_model = BaseModelArgs(name=self.base_model)
