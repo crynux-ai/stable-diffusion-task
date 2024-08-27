@@ -30,3 +30,11 @@ def decode_image_dataurl(image_dataurl: str) -> Image.Image:
     image_data = re.sub("^data:image/.+;base64,", "", image_dataurl)
     image = Image.open(BytesIO(base64.b64decode(image_data)))
     return image
+
+
+def encode_image_dataurl(image: Image.Image):
+    buffered = BytesIO()
+    image.save(buffered, format="PNG")
+    return "data:image/png;base64," + base64.b64encode(buffered.getvalue()).decode(
+        "utf-8"
+    )
