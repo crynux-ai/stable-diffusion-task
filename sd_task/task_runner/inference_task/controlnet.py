@@ -1,5 +1,7 @@
 import logging
+from typing import cast
 
+from PIL import Image
 from sd_task.task_args.inference_task import ControlnetArgs
 from sd_task.utils import decode_image_dataurl, encode_image_dataurl
 
@@ -24,14 +26,13 @@ def add_controlnet_pipeline_call_args(call_args: dict, controlnet: ControlnetArg
                 and controlnet.preprocess.args is not None):
             args_dict = controlnet.preprocess.args.model_dump()
 
-        args_dict["detect_resolution"] = min(reference_image.width, reference_image.height)
-        args_dict["image_resolution"] = min(
-            image_width,
-            image_height
-        )
+        resolution = max(image_width, image_height)
+        args_dict["detect_resolution"] = resolution 
+        args_dict["image_resolution"] = resolution
 
         preprocessor = processor.Processor(controlnet.preprocess.method, args_dict)
         reference_image = preprocessor(reference_image, to_pil=True)
+        reference_image = cast(Image.Image, reference_image)
         _logger.debug(f"controlnet input imaage: {encode_image_dataurl(reference_image)}")
 
     call_args["image"] = reference_image
