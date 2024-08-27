@@ -1,5 +1,10 @@
+import logging
+
 from sd_task.task_args.inference_task import ControlnetArgs
-from sd_task.utils import decode_image_dataurl
+from sd_task.utils import decode_image_dataurl, encode_image_dataurl
+
+
+_logger = logging.getLogger(__name__)
 
 
 def add_controlnet_pipeline_call_args(call_args: dict, controlnet: ControlnetArgs, image_width: int, image_height: int):
@@ -27,6 +32,7 @@ def add_controlnet_pipeline_call_args(call_args: dict, controlnet: ControlnetArg
 
         preprocessor = processor.Processor(controlnet.preprocess.method, args_dict)
         reference_image = preprocessor(reference_image, to_pil=True)
+        _logger.debug(f"controlnet input imaage: {encode_image_dataurl(reference_image)}")
 
     call_args["image"] = reference_image
     call_args["controlnet_conditioning_scale"] = controlnet.weight
