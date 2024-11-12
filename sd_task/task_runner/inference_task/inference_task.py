@@ -32,7 +32,6 @@ def get_pipeline_init_args(
     cache_dir: str, safety_checker: bool = True, variant: str | None = "fp16"
 ):
     init_args = {
-        "torch_dtype": torch.float16,
         "cache_dir": cache_dir,
         "local_files_only": True,
     }
@@ -58,9 +57,7 @@ def prepare_pipeline(cache_dir: str, args: InferenceTaskArgs):
         try:
             controlnet_model = ControlNetModel.from_pretrained(
                 args.controlnet.model,
-                torch_dtype=torch.float16,
                 cache_dir=cache_dir,
-                variant="fp16",
                 local_files_only=True,
             )
         except EnvironmentError:
@@ -69,7 +66,6 @@ def prepare_pipeline(cache_dir: str, args: InferenceTaskArgs):
         if controlnet_model is None:
             controlnet_model = ControlNetModel.from_pretrained(
                 args.controlnet.model,
-                torch_dtype=torch.float16,
                 cache_dir=cache_dir,
                 local_files_only=True,
             )
@@ -81,10 +77,8 @@ def prepare_pipeline(cache_dir: str, args: InferenceTaskArgs):
         try:
             unet_model = UNet2DConditionModel.from_pretrained(
                 args.unet,
-                torch_dtype=torch.float16,
                 cache_dir=cache_dir,
                 local_files_only=True,
-                variant="fp16",
             )
         except EnvironmentError:
             pass
@@ -92,7 +86,6 @@ def prepare_pipeline(cache_dir: str, args: InferenceTaskArgs):
         if unet_model is None:
             unet_model = UNet2DConditionModel.from_pretrained(
                 args.unet,
-                torch_dtype=torch.float16,
                 cache_dir=cache_dir,
                 local_files_only=True,
             )
@@ -110,10 +103,8 @@ def prepare_pipeline(cache_dir: str, args: InferenceTaskArgs):
         try:
             vae_model = AutoencoderKL.from_pretrained(
                 args.vae,
-                torch_dtype=torch.float16,
                 cache_dir=cache_dir,
                 local_files_only=True,
-                variant="fp16",
             )
         except EnvironmentError:
             pass
@@ -121,7 +112,6 @@ def prepare_pipeline(cache_dir: str, args: InferenceTaskArgs):
         if vae_model is None:
             vae_model = AutoencoderKL.from_pretrained(
                 args.vae,
-                torch_dtype=torch.float16,
                 cache_dir=cache_dir,
                 local_files_only=True,
             )
@@ -208,14 +198,17 @@ def run_inference_task(
     if runner_version < task_version:
         raise TaskVersionNotSupported()
 
-    if utils.get_accelerator() == "cuda":
-        # Use deterministic algorithms for reproducibility
-        os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":16:8"
-        torch.backends.cudnn.benchmark = False
-        torch.use_deterministic_algorithms(True)
-
     if config is None:
         config = get_config()
+
+    if config.deterministic and utils.get_accelerator() == "cuda":
+        # Use deterministic algorithms for reproducibility
+        os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
+        os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":16:8"
+        torch.use_deterministic_algorithms(True)
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
+        torch.backends.cuda.matmul.allow_tf32 = False
 
     log("Task is started")
 

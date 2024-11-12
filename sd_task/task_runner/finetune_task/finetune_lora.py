@@ -1,6 +1,8 @@
 import math
 import os
 import random
+import json
+import hashlib
 from contextlib import nullcontext
 from typing import cast, List
 
@@ -34,21 +36,42 @@ from diffusers.utils.torch_utils import is_compiled_module
 
 from sd_task.config import Config, get_config
 from sd_task.task_args import FinetuneLoraTaskArgs
+from sd_task.cache import ModelCache
+from sd_task import utils
 
 _logger = get_logger(__name__, log_level="INFO")
 
+def generate_model_key(args: FinetuneLoraTaskArgs):
+    model_args = {
+        "model_name": args.model.name,
+        "model_revision": args.model.revision,
+        "mixed_precision": args.mixed_precision,
+    }
+    if args.model.variant is not None:
+        model_args["model_variant"] = args.model.variant
 
-def run_finetune_lora_task(args: FinetuneLoraTaskArgs, output_dir: str, config: Config | None = None):
-    # enable deterministic algorithms
-    os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
-    os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":16:8"
-    torch.use_deterministic_algorithms(True)
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
-    torch.backends.cuda.matmul.allow_tf32 = False
+    model_args_str = json.dumps(model_args, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
+    key = hashlib.md5(model_args_str.encode("utf-8")).hexdigest()
+    return key
 
+
+def run_finetune_lora_task(
+    args: FinetuneLoraTaskArgs,
+    output_dir: str,
+    config: Config | None = None,
+    model_cache: ModelCache | None = None,
+):
     if config is None:
         config = get_config()
+
+    # enable deterministic algorithms
+    if config.deterministic and utils.get_accelerator() == "cuda":
+        os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
+        os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":16:8"
+        torch.use_deterministic_algorithms(True)
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
+        torch.backends.cuda.matmul.allow_tf32 = False
 
     cache_dir = config.data_dir.models.huggingface
     train_args = args.train_args
@@ -73,44 +96,6 @@ def run_finetune_lora_task(args: FinetuneLoraTaskArgs, output_dir: str, config: 
         if output_dir is not None:
             os.makedirs(output_dir, exist_ok=True)
 
-    noise_scheduler: DDPMScheduler = DDPMScheduler.from_pretrained(
-        args.model.name, subfolder="scheduler", cache_dir=cache_dir
-    )
-    tokenizer = CLIPTokenizer.from_pretrained(
-        args.model.name,
-        subfolder="tokenizer",
-        revision=args.model.revision,
-        cache_dir=cache_dir,
-    )
-    tokenizer = cast(CLIPTokenizer, tokenizer)
-    text_encoder = CLIPTextModel.from_pretrained(
-        args.model.name,
-        subfolder="text_encoder",
-        revision=args.model.revision,
-        cache_dir=cache_dir,
-    )
-    text_encoder = cast(CLIPTextModel, text_encoder)
-    vae = AutoencoderKL.from_pretrained(
-        args.model.name,
-        subfolder="vae",
-        revision=args.model.revision,
-        variant=args.model.variant,
-        cache_dir=cache_dir,
-    )
-    vae = cast(CLIPTextModel, vae)
-    unet = UNet2DConditionModel.from_pretrained(
-        args.model.name,
-        subfolder="unet",
-        revision=args.model.revision,
-        variant=args.model.variant,
-        cache_dir=cache_dir,
-    )
-    unet = cast(UNet2DConditionModel, unet)
-    # freeze parameters of models to save more memory
-    unet.requires_grad_(False)
-    vae.requires_grad_(False)
-    text_encoder.requires_grad_(False)
-
     # For mixed precision training we cast all non-trainable weights (vae, non-lora text_encoder and non-lora unet) to half-precision
     # as these weights are only used for inference, keeping weights in full precision is not required.
     weight_dtype = torch.float32
@@ -119,27 +104,83 @@ def run_finetune_lora_task(args: FinetuneLoraTaskArgs, output_dir: str, config: 
     elif accelerator.mixed_precision == "bf16":
         weight_dtype = torch.bfloat16
 
-    # Freeze the unet parameters before adding adapters
-    for param in unet.parameters():
-        param.requires_grad_(False)
+    def load_model():
+        noise_scheduler: DDPMScheduler = DDPMScheduler.from_pretrained(
+            args.model.name, subfolder="scheduler", cache_dir=cache_dir
+        )
+        tokenizer = CLIPTokenizer.from_pretrained(
+            args.model.name,
+            subfolder="tokenizer",
+            revision=args.model.revision,
+            cache_dir=cache_dir,
+        )
+        tokenizer = cast(CLIPTokenizer, tokenizer)
+        text_encoder = CLIPTextModel.from_pretrained(
+            args.model.name,
+            subfolder="text_encoder",
+            revision=args.model.revision,
+            cache_dir=cache_dir,
+        )
+        text_encoder = cast(CLIPTextModel, text_encoder)
+        vae = AutoencoderKL.from_pretrained(
+            args.model.name,
+            subfolder="vae",
+            revision=args.model.revision,
+            variant=args.model.variant,
+            cache_dir=cache_dir,
+        )
+        vae = cast(CLIPTextModel, vae)
+        unet = UNet2DConditionModel.from_pretrained(
+            args.model.name,
+            subfolder="unet",
+            revision=args.model.revision,
+            variant=args.model.variant,
+            cache_dir=cache_dir,
+        )
+        unet = cast(UNet2DConditionModel, unet)
+        # freeze parameters of models to save more memory
+        unet.requires_grad_(False)
+        vae.requires_grad_(False)
+        text_encoder.requires_grad_(False)
 
-    unet_lora_config = LoraConfig(
-        r=args.lora.rank,
-        lora_alpha=args.lora.rank,
-        init_lora_weights=args.lora.init_lora_weights,
-        target_modules=args.lora.target_modules,
-    )
+        # Freeze the unet parameters before adding adapters
+        for param in unet.parameters():
+            param.requires_grad_(False)
 
-    # Move unet, vae and text_encoder to device and cast to weight_dtype
-    unet.to(accelerator.device, dtype=weight_dtype)
-    vae.to(accelerator.device, dtype=weight_dtype)
-    text_encoder.to(accelerator.device, dtype=weight_dtype)
+        unet_lora_config = LoraConfig(
+            r=args.lora.rank,
+            lora_alpha=args.lora.rank,
+            init_lora_weights=args.lora.init_lora_weights,
+            target_modules=args.lora.target_modules,
+        )
 
-    # Add adapter and make sure the trainable params are in float32.
-    unet.add_adapter(unet_lora_config)
-    if args.mixed_precision == "fp16":
-        # only upcast trainable parameters (LoRA) into fp32
-        cast_training_params(unet, dtype=torch.float32)
+        # Move unet, vae and text_encoder to device and cast to weight_dtype
+        unet.to(accelerator.device, dtype=weight_dtype)
+        vae.to(accelerator.device, dtype=weight_dtype)
+        text_encoder.to(accelerator.device, dtype=weight_dtype)
+
+        # Add adapter and make sure the trainable params are in float32.
+        unet.add_adapter(unet_lora_config)
+        if args.mixed_precision == "fp16":
+            # only upcast trainable parameters (LoRA) into fp32
+            cast_training_params(unet, dtype=torch.float32)
+
+        pipeline = DiffusionPipeline.from_pretrained(
+            args.model.name,
+            safety_checker=None,
+            revision=args.model.revision,
+            variant=args.model.variant,
+            torch_dtype=weight_dtype,
+            cache_dir=cache_dir,
+        )
+        pipeline = pipeline.to(accelerator.device)
+        return noise_scheduler, tokenizer, text_encoder, vae, unet, pipeline
+
+    if model_cache is not None:
+        key = generate_model_key(args)
+        noise_scheduler, tokenizer, text_encoder, vae, unet, pipeline = model_cache.load(key, load_model)
+    else:
+        noise_scheduler, tokenizer, text_encoder, vae, unet, pipeline = load_model()
 
     lora_layers = list(filter(lambda p: p.requires_grad, unet.parameters()))
     print(f"lora layers length: {len(lora_layers)}")
@@ -519,15 +560,8 @@ def run_finetune_lora_task(args: FinetuneLoraTaskArgs, output_dir: str, config: 
             k = min(args.validation.num_images, len(captions))
             random.seed(args.seed)
             prompts = random.sample(captions, k)
-        pipeline = DiffusionPipeline.from_pretrained(
-            args.model.name,
-            unet=unwrapped_unet,
-            safety_checker=None,
-            revision=args.model.revision,
-            variant=args.model.variant,
-            torch_dtype=weight_dtype,
-        )
-        pipeline = pipeline.to(accelerator.device)
+
+        pipeline.load_lora_weights(save_path)
 
         # run inference
         generator = torch.Generator(device=accelerator.device)
@@ -555,4 +589,9 @@ def run_finetune_lora_task(args: FinetuneLoraTaskArgs, output_dir: str, config: 
             image_name = os.path.join(image_dir, f"{i}.png")
             image.save(image_name)
 
+        pipeline.unload_lora_weights()
+
     accelerator.end_training()
+
+    if utils.get_accelerator() == "cuda":
+        torch.cuda.empty_cache()

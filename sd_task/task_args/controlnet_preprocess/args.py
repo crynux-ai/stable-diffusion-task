@@ -1,10 +1,10 @@
 from typing import Literal, Optional, Union
 
 from PIL.Image import Image
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from pydantic.json_schema import SkipJsonSchema
 
-from ..types import FloatFractionAsInt, NonEmptyString
+from ..types import FloatFractionAsInt
 
 
 class CannyArgs(BaseModel):
@@ -156,14 +156,11 @@ class PreprocessMethodMediapipeFace(BaseModel):
     args: MediapipeFaceArgs | None = None
 
 
-class ControlnetArgs(BaseModel):
+class ControlnetPreprocessTaskArgs(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    model: NonEmptyString
-    variant: str | None = "fp16"
     image_dataurl: str = ""
     image: SkipJsonSchema[Optional[Image]] = Field(None, exclude=True, init_var=True)
-    weight: FloatFractionAsInt = 70
     preprocess: Union[
         PreprocessMethodCanny,
         PreprocessMethodScribbleHED,
@@ -189,5 +186,4 @@ class ControlnetArgs(BaseModel):
         PreprocessMethodDepthLeresPP,
         PreprocessMethodShuffle,
         PreprocessMethodMediapipeFace,
-        None,
-    ] = Field(discriminator="method", default=None)
+    ]

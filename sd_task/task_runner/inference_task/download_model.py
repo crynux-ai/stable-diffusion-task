@@ -42,6 +42,7 @@ def check_and_prepare_models(task_args: InferenceTaskArgs, **kwargs):
             ControlNetModel.load_config,
             [SAFETENSORS_WEIGHTS_NAME, WEIGHTS_NAME],
             False,
+            variant=task_args.controlnet.variant,
             **kwargs,
         )
 
