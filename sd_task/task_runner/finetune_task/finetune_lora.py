@@ -61,16 +61,17 @@ def run_finetune_lora_task(
     config: Config | None = None,
     model_cache: ModelCache | None = None,
 ):
-    # enable deterministic algorithms
-    os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
-    os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":16:8"
-    torch.use_deterministic_algorithms(True)
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
-    torch.backends.cuda.matmul.allow_tf32 = False
-
     if config is None:
         config = get_config()
+
+    # enable deterministic algorithms
+    if config.deterministic and utils.get_accelerator() == "cuda":
+        os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
+        os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":16:8"
+        torch.use_deterministic_algorithms(True)
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
+        torch.backends.cuda.matmul.allow_tf32 = False
 
     cache_dir = config.data_dir.models.huggingface
     train_args = args.train_args

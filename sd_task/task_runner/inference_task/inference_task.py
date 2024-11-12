@@ -198,14 +198,17 @@ def run_inference_task(
     if runner_version < task_version:
         raise TaskVersionNotSupported()
 
-    if utils.get_accelerator() == "cuda":
-        # Use deterministic algorithms for reproducibility
-        os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":16:8"
-        torch.backends.cudnn.benchmark = False
-        torch.use_deterministic_algorithms(True)
-
     if config is None:
         config = get_config()
+
+    if config.deterministic and utils.get_accelerator() == "cuda":
+        # Use deterministic algorithms for reproducibility
+        os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
+        os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":16:8"
+        torch.use_deterministic_algorithms(True)
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
+        torch.backends.cuda.matmul.allow_tf32 = False
 
     log("Task is started")
 
