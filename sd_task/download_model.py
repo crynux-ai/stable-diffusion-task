@@ -65,7 +65,7 @@ def check_and_download_external_model(
             log("Found a local cache of the model file. Skip the download")
             return model_file, weight_file_name
     else:
-        os.mkdir(model_folder, 0o755)
+        os.makedirs(model_folder, mode=0o755, exist_ok=True)
 
     # Download the model file
     model_file = os.path.join(model_folder, "model.safetensors")
