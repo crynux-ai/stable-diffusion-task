@@ -25,3 +25,4 @@ datasets==3.1.0
 onnxruntime==1.18.0
 onnxruntime-gpu==1.19.0
 rembg[gpu]==2.0.58
+huggingface_hub==0.24.6
