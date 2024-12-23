@@ -141,7 +141,7 @@ def check_and_download_hf_model(
     guess_weight_name: bool,
     hf_model_cache_dir: str,
     proxy: ProxyConfig | None,
-    variant: str | None
+    variant: str | None = None,
 ) -> tuple[str, str]:
     log("Check and download the Huggingface model file: " + model_name)
     weight_file_name = ""
