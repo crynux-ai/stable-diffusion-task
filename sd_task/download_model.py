@@ -24,7 +24,7 @@ def check_and_download_model_by_name(
     hf_model_cache_dir = kwargs.pop("hf_model_cache_dir")
     external_model_cache_dir = kwargs.pop("external_model_cache_dir")
     proxy = kwargs.pop("proxy")
-    variant = kwargs.pop("variant", "fp16")
+    variant = kwargs.pop("variant", None)
 
     if validators.url(model_name):
         return check_and_download_external_model(

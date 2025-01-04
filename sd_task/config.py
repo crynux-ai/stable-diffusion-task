@@ -17,7 +17,7 @@ class DataDirConfig(BaseModel):
 
 class ModelConfig(BaseModel):
     id: str
-    variant: str | None = "fp16"
+    variant: str | None = None
 
 
 class PreloadedModelsConfig(BaseModel):
