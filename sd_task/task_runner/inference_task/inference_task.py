@@ -29,7 +29,7 @@ from .scheduler import add_scheduler_pipeline_args
 
 
 def get_pipeline_init_args(
-    cache_dir: str, safety_checker: bool = True, variant: str | None = "fp16"
+    cache_dir: str, safety_checker: bool = True, variant: str | None = None
 ):
     init_args = {
         "cache_dir": cache_dir,

@@ -24,7 +24,7 @@ def check_and_download_model_by_name(
     hf_model_cache_dir = kwargs.pop("hf_model_cache_dir")
     external_model_cache_dir = kwargs.pop("external_model_cache_dir")
     proxy = kwargs.pop("proxy")
-    variant = kwargs.pop("variant", "fp16")
+    variant = kwargs.pop("variant", None)
 
     if validators.url(model_name):
         return check_and_download_external_model(
@@ -141,7 +141,7 @@ def check_and_download_hf_model(
     guess_weight_name: bool,
     hf_model_cache_dir: str,
     proxy: ProxyConfig | None,
-    variant: str | None
+    variant: str | None = None,
 ) -> tuple[str, str]:
     log("Check and download the Huggingface model file: " + model_name)
     weight_file_name = ""

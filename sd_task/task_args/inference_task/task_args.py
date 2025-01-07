@@ -11,7 +11,7 @@ from ..version import VersionString
 
 class RefinerArgs(BaseModel):
     model: NonEmptyString
-    variant: str | None = "fp16"
+    variant: str | None = None
     denoising_cutoff: FloatFractionAsInt = 80  # Not used if controlnet is enabled
     steps: Annotated[int, Gt(0), Le(100)] = 20
 
@@ -34,11 +34,11 @@ class TaskConfig(BaseModel):
 
 class BaseModelArgs(BaseModel):
     name: NonEmptyString
-    variant: str | None = "fp16"
+    variant: str | None = None
 
 
 class InferenceTaskArgs(BaseModel):
-    version: VersionString = VersionString.V1_0_0
+    version: VersionString = VersionString.V3_0_0
     base_model: BaseModelArgs | NonEmptyString
     unet: str = ""
     prompt: NonEmptyString
