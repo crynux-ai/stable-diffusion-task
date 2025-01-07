@@ -38,7 +38,7 @@ class BaseModelArgs(BaseModel):
 
 
 class InferenceTaskArgs(BaseModel):
-    version: VersionString = VersionString.V1_0_0
+    version: VersionString = VersionString.V3_0_0
     base_model: BaseModelArgs | NonEmptyString
     unet: str = ""
     prompt: NonEmptyString
