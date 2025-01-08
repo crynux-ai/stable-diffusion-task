@@ -88,4 +88,4 @@ class FinetuneLoraTaskArgs(BaseModel):
 
     checkpoint: Annotated[str, MinLen(1)] | None = None
 
-    version: VersionString = VersionString.V3_0_0
+    version: VersionString = VersionString.V2_5_0
