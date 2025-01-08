@@ -38,7 +38,7 @@ class BaseModelArgs(BaseModel):
 
 
 class InferenceTaskArgs(BaseModel):
-    version: VersionString = VersionString.V3_0_0
+    version: VersionString = VersionString.V2_5_0
     base_model: BaseModelArgs | NonEmptyString
     unet: str = ""
     prompt: NonEmptyString
@@ -46,11 +46,9 @@ class InferenceTaskArgs(BaseModel):
     task_config: TaskConfig
     lora: LoraArgs | None = None
     controlnet: ControlnetArgs | None = None
-    scheduler: Union[
-        DPMSolverMultistep,
-        EulerAncestralDiscrete,
-        LCM
-    ] = Field(discriminator="method", default=DPMSolverMultistep())
+    scheduler: Union[DPMSolverMultistep, EulerAncestralDiscrete, LCM] = Field(
+        discriminator="method", default=DPMSolverMultistep()
+    )
     vae: str = ""
     refiner: RefinerArgs | None = None
     textual_inversion: str = ""
