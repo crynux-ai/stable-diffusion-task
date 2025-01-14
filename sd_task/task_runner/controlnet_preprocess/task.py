@@ -1,7 +1,6 @@
 import os
 from typing import cast
 
-from controlnet_aux import processor
 from PIL import Image
 
 from sd_task import utils
@@ -35,6 +34,8 @@ def run_controlnet_preprocess_task(
     args_dict["image_resolution"] = resolution
 
     def load_model():
+        from controlnet_aux import processor
+
         os.environ["HF_HUB_CACHE"] = config.data_dir.models.huggingface
         preprocessor = processor.Processor(args.preprocess.method, args_dict)
         return preprocessor
