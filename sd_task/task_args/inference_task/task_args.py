@@ -1,7 +1,7 @@
 from annotated_types import Gt, Ge, Le, Lt
 from pydantic import BaseModel, Field
 from typing_extensions import Annotated
-from typing import Any, Union
+from typing import Any, Union, Literal
 
 from .controlnet_args import ControlnetArgs
 from .scheduler_args import DPMSolverMultistep, EulerAncestralDiscrete, LCM
@@ -40,6 +40,7 @@ class BaseModelArgs(BaseModel):
 class InferenceTaskArgs(BaseModel):
     version: VersionString = VersionString.V2_5_0
     base_model: BaseModelArgs | NonEmptyString
+    dtype: Literal["float16", "bfloat16", "float32", "auto"] = "auto"
     unet: str = ""
     prompt: NonEmptyString
     negative_prompt: str = ""

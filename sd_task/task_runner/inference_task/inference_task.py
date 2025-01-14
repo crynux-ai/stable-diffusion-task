@@ -29,15 +29,18 @@ from .scheduler import add_scheduler_pipeline_args
 
 
 def get_pipeline_init_args(
-    cache_dir: str, safety_checker: bool = True, variant: str | None = None
+    cache_dir: str, safety_checker: bool = True, torch_dtype: torch.dtype | None = None, variant: str | None = None
 ):
     init_args = {
+        "torch_dtype": torch_dtype,
         "cache_dir": cache_dir,
         "local_files_only": True,
     }
 
     if variant is not None:
         init_args["variant"] = variant
+        if variant == "fp16":
+            init_args["torch_dtype"] = torch.float16
 
     if not safety_checker:
         init_args["safety_checker"] = None
@@ -47,8 +50,16 @@ def get_pipeline_init_args(
 
 def prepare_pipeline(cache_dir: str, args: InferenceTaskArgs):
     assert isinstance(args.base_model, BaseModelArgs)
+    torch_dtype = None
+    if args.dtype == "float16":
+        torch_dtype = torch.float16
+    elif args.dtype == "float32":
+        torch_dtype = torch.float32
+    elif args.dtype == "bfloat16":
+        torch_dtype = torch.bfloat16
+
     pipeline_args = get_pipeline_init_args(
-        cache_dir, args.task_config.safety_checker, args.base_model.variant
+        cache_dir, args.task_config.safety_checker, torch_dtype, args.base_model.variant
     )
     acc_device = utils.get_accelerator()
 
