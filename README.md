@@ -2,9 +2,11 @@
 
 A general framework to define and execute the Stable Diffusion task.
 
+> 🚀 **NEW: RTX 5090 Support!** This project now supports NVIDIA RTX 5090 graphics cards.
 
 ### Features
 
+* 🚀 **RTX 5090 Optimizations**: Native support with Flash Attention, TF32, and memory optimizations
 * The latest acceleration tech to generate images in only 1 step using SDXL Turbo & Latent Consistency Models (LCM)
 * Unified task definition for Stable Diffusion 1.5, 2.1 and Stable Diffusion XL
 * SDXL - Base + Refiner ([ensemble of expert denoisers](https://research.nvidia.com/labs/dir/eDiff-I/)) and standalone Refiner
@@ -84,8 +86,8 @@ $ source ./venv/bin/activate
 
 Install the dependencies:
 ```shell
-# Use requirements_macos.txt on Macos
-(venv) $ pip install -r requirments_cuda.txt
+(venv) $ pip install -r requirements_cuda.txt
+(venv) $ pip install -e .
 ```
 
 Cache the base model files:
@@ -96,6 +98,9 @@ Cache the base model files:
 Check and run the examples:
 ```shell
 (venv) $ python ./examples/sdxl_turbo_lora_controlnet.py
+
+# For RTX 5090
+(venv) $ python ./examples/rtx_5090_example.py
 ```
 
 More explanations can be found in the doc:
