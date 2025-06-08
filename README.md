@@ -2,6 +2,7 @@
 
 A general framework to define and execute the Stable Diffusion task.
 
+> 🚀 **NEW: RTX 50 series Support!** This project now supports NVIDIA RTX 50 series graphics cards.
 
 ### Features
 
@@ -84,8 +85,8 @@ $ source ./venv/bin/activate
 
 Install the dependencies:
 ```shell
-# Use requirements_macos.txt on Macos
-(venv) $ pip install -r requirments_cuda.txt
+(venv) $ pip install -r requirements_cuda.txt
+(venv) $ pip install -e .
 ```
 
 Cache the base model files:
