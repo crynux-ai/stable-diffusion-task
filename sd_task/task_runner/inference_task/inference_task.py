@@ -212,11 +212,6 @@ def run_inference_task(
     if config is None:
         config = get_config()
 
-    # RTX 5090 optimization settings
-    rtx_5090_optimized = utils.optimize_for_rtx_5090()
-    if rtx_5090_optimized:
-        log("RTX 5090 optimizations enabled")
-
     # Get GPU information
     gpu_info = utils.get_gpu_info()
     if gpu_info:

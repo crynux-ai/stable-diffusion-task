@@ -50,37 +50,6 @@ def get_gpu_info():
     
     return None
 
-
-def is_rtx_5090():
-    """Detect if the graphics card is RTX 5090"""
-    gpu_info = get_gpu_info()
-    if gpu_info and "RTX 5090" in gpu_info["gpu_name"]:
-        return True
-    return False
-
-
-def optimize_for_rtx_5090():
-    """Optimize settings for RTX 5090 graphics card"""
-    try:
-        import torch
-        if torch.cuda.is_available() and is_rtx_5090():
-            # Enable Flash Attention and other optimizations
-            torch.backends.cuda.matmul.allow_tf32 = True
-            torch.backends.cudnn.allow_tf32 = True
-            torch.backends.cuda.enable_flash_sdp(True)
-            torch.backends.cuda.enable_math_sdp(False)
-            torch.backends.cuda.enable_mem_efficient_sdp(True)
-            
-            # Set memory allocation strategy
-            torch.cuda.empty_cache()
-            
-            return True
-    except Exception:
-        pass
-    
-    return False
-
-
 def decode_image_dataurl(image_dataurl: str) -> Image.Image:
     image_data = re.sub("^data:image/.+;base64,", "", image_dataurl)
     image = Image.open(BytesIO(base64.b64decode(image_data)))
