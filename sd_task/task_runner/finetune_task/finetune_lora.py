@@ -1,45 +1,42 @@
+import hashlib
+import json
 import math
 import os
 import random
-import json
-import hashlib
 from contextlib import nullcontext
-from typing import cast, List
+from typing import List, cast
 
 import numpy as np
 import torch
 import torch.nn.functional as F
 import torch.utils.checkpoint
-from torch.utils.data import DataLoader
 from accelerate import Accelerator
 from accelerate.logging import get_logger
 from accelerate.utils import set_seed
-from datasets import load_dataset, DatasetDict
-from peft import LoraConfig
-from peft.utils import get_peft_model_state_dict
-from PIL import Image
-from torchvision import transforms
-from tqdm.auto import tqdm
-from transformers import CLIPTextModel, CLIPTokenizer
-
-from diffusers import (
-    AutoencoderKL,
-    DDPMScheduler,
-    DiffusionPipeline,
-    StableDiffusionPipeline,
-    UNet2DConditionModel,
-)
+from datasets import DatasetDict, load_dataset
+from diffusers import (AutoencoderKL, DDPMScheduler, DiffusionPipeline,
+                       StableDiffusionPipeline, UNet2DConditionModel)
 from diffusers.optimization import get_scheduler
 from diffusers.training_utils import cast_training_params, compute_snr
 from diffusers.utils import convert_state_dict_to_diffusers
 from diffusers.utils.torch_utils import is_compiled_module
+from peft import LoraConfig
+from peft.utils import get_peft_model_state_dict
+from PIL import Image
+from torch.utils.data import DataLoader
+from torchvision import transforms
+from tqdm.auto import tqdm
+from transformers import CLIPTextModel, CLIPTokenizer
 
+from sd_task import utils
+from sd_task.cache import ModelCache
 from sd_task.config import Config, get_config
 from sd_task.task_args import FinetuneLoraTaskArgs
-from sd_task.cache import ModelCache
-from sd_task import utils
+
+from .download_url_dataset import download_dataset_from_url
 
 _logger = get_logger(__name__, log_level="INFO")
+
 
 def generate_model_key(args: FinetuneLoraTaskArgs):
     model_args = {
@@ -50,7 +47,9 @@ def generate_model_key(args: FinetuneLoraTaskArgs):
     if args.model.variant is not None:
         model_args["model_variant"] = args.model.variant
 
-    model_args_str = json.dumps(model_args, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
+    model_args_str = json.dumps(
+        model_args, ensure_ascii=False, separators=(",", ":"), sort_keys=True
+    )
     key = hashlib.md5(model_args_str.encode("utf-8")).hexdigest()
     return key
 
@@ -178,7 +177,9 @@ def run_finetune_lora_task(
 
     if model_cache is not None:
         key = generate_model_key(args)
-        noise_scheduler, tokenizer, text_encoder, vae, unet, pipeline = model_cache.load(key, load_model)
+        noise_scheduler, tokenizer, text_encoder, vae, unet, pipeline = (
+            model_cache.load(key, load_model)
+        )
     else:
         noise_scheduler, tokenizer, text_encoder, vae, unet, pipeline = load_model()
 
@@ -201,12 +202,24 @@ def run_finetune_lora_task(
         eps=train_args.adam_args.epsilon,
     )
 
-    dataset = load_dataset(
-        args.dataset.name,
-        args.dataset.config_name,
-        cache_dir=cache_dir,
-    )
-    dataset = cast(DatasetDict, dataset)
+    if args.dataset.name is not None:
+        dataset = load_dataset(
+            args.dataset.name,
+            args.dataset.config_name,
+            cache_dir=cache_dir,
+        )
+        dataset = cast(DatasetDict, dataset)
+    elif args.dataset.url is not None:
+        cache_dir = config.data_dir.models.external
+        url = str(args.dataset.url)
+        dirname = hashlib.md5(url.encode("utf-8")).hexdigest()
+        dataset_dir = os.path.join(cache_dir, dirname)
+        os.makedirs(dataset_dir, exist_ok=True)
+        dataset_path = download_dataset_from_url(url, dataset_dir)
+        dataset = load_dataset(dataset_path, args.dataset.config_name)
+        dataset = cast(DatasetDict, dataset)
+    else:
+        raise ValueError("Either dataset.name or dataset.url must be provided")
 
     column_names = dataset["train"].column_names
     image_column = args.dataset.image_column

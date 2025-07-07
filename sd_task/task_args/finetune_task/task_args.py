@@ -1,7 +1,7 @@
 from typing import Annotated, Literal, List
 
 from annotated_types import Ge, Gt, MinLen, Le
-from pydantic import BaseModel
+from pydantic import BaseModel, HttpUrl
 
 from ..version import VersionString
 
@@ -43,7 +43,8 @@ class ModelArgs(BaseModel):
 
 
 class DatasetArgs(BaseModel):
-    name: Annotated[str, MinLen(1)]
+    url: HttpUrl | None = None
+    name: Annotated[str, MinLen(1)] | None = None
     config_name: str | None = None
     image_column: str = "image"
     caption_column: str = "text"
