@@ -212,6 +212,11 @@ def run_inference_task(
     if config is None:
         config = get_config()
 
+    # Get GPU information
+    gpu_info = utils.get_gpu_info()
+    if gpu_info:
+        log(f"GPU: {gpu_info['gpu_name']} ({gpu_info['gpu_memory_gb']}GB)")
+
     if config.deterministic and utils.get_accelerator() == "cuda":
         # Use deterministic algorithms for reproducibility
         os.environ["CUDA_LAUNCH_BLOCKING"] = "1"

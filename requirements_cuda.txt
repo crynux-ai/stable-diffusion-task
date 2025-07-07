@@ -1,29 +1,29 @@
---extra-index-url https://download.pytorch.org/whl/cu118
-torch==2.2.0+cu118
---extra-index-url https://download.pytorch.org/whl/cu118
-torchaudio==2.2.0+cu118
---extra-index-url https://download.pytorch.org/whl/cu118
-torchvision==0.17.0+cu118
+--extra-index-url https://download.pytorch.org/whl/cu128
+torch==2.7.0+cu128
+--extra-index-url https://download.pytorch.org/whl/cu128
+torchaudio==2.7.0+cu128
+--extra-index-url https://download.pytorch.org/whl/cu128
+torchvision==0.22.0+cu128
 
-accelerate==0.33.0
+accelerate==1.1.1
 pydantic==2.7.4
 pydantic-settings==2.6.1
 PyYAML==5.3.1
 annotated-types==0.6.0
 Pillow==10.0.1
 controlnet-aux==0.0.7
-diffusers==0.31.0
-compel==2.0.2
+diffusers==0.32.1
+compel==2.0.3
 mediapipe==0.10.18
 validators==0.22.0
-tqdm==4.66.3
-numpy==1.26.2
-scipy==1.11.4
-requests==2.32.2
-peft==0.11.1
+tqdm==4.66.5
+numpy==1.26.4
+scipy==1.14.1
+requests==2.32.3
+peft==0.13.2
 datasets==3.1.0
-onnxruntime==1.18.0
-onnxruntime-gpu==1.19.0
+onnxruntime==1.20.0
+onnxruntime-gpu==1.20.0
 rembg[gpu]==2.0.58
-huggingface_hub==0.24.6
+huggingface_hub==0.32.4
 numba==0.60.0
