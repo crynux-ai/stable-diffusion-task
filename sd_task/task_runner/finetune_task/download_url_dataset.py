@@ -28,14 +28,23 @@ def _detect_file_type_by_magic_number(file_path: str) -> str:
             
             # GZIP file: \x1f\x8b
             if header.startswith(b'\x1f\x8b'):
+                # Check if it's a tar.gz by examining the decompressed content
+                if _is_tar_inside_gzip(file_path):
+                    return ".tar.gz"
                 return ".gz"
             
             # BZIP2 file: BZ
             if header.startswith(b'BZ'):
+                # Check if it's a tar.bz2 by examining the decompressed content
+                if _is_tar_inside_bzip2(file_path):
+                    return ".tar.bz2"
                 return ".bz2"
             
             # XZ file: \xfd7zXZ\x00
             if header.startswith(b'\xfd7zXZ\x00'):
+                # Check if it's a tar.xz by examining the decompressed content
+                if _is_tar_inside_xz(file_path):
+                    return ".tar.xz"
                 return ".xz"
             
             # TAR file: ustar (GNU tar) or POSIX tar
@@ -60,9 +69,65 @@ def _detect_file_type_by_magic_number(file_path: str) -> str:
         return ""
 
 
+def _is_tar_inside_gzip(file_path: str) -> bool:
+    """Check if the content inside a gzip file is a tar file."""
+    try:
+        import gzip
+        with gzip.open(file_path, 'rb') as gz_file:
+            # Read the first 512 bytes (tar header size)
+            header = gz_file.read(512)
+            if len(header) < 262:
+                return False
+            
+            # Check for tar magic number at offset 257
+            tar_magic = header[257:265]
+            return tar_magic.startswith(b'ustar\x00') or tar_magic.startswith(b'ustar ')
+    except Exception as e:
+        _logger.debug(f"Failed to check tar inside gzip: {e}")
+        return False
+
+
+def _is_tar_inside_bzip2(file_path: str) -> bool:
+    """Check if the content inside a bzip2 file is a tar file."""
+    try:
+        import bz2
+        with bz2.open(file_path, 'rb') as bz_file:
+            # Read the first 512 bytes (tar header size)
+            header = bz_file.read(512)
+            if len(header) < 262:
+                return False
+            
+            # Check for tar magic number at offset 257
+            tar_magic = header[257:265]
+            return tar_magic.startswith(b'ustar\x00') or tar_magic.startswith(b'ustar ')
+    except Exception as e:
+        _logger.debug(f"Failed to check tar inside bzip2: {e}")
+        return False
+
+
+def _is_tar_inside_xz(file_path: str) -> bool:
+    """Check if the content inside an xz file is a tar file."""
+    try:
+        import lzma
+        with lzma.open(file_path, 'rb') as xz_file:
+            # Read the first 512 bytes (tar header size)
+            header = xz_file.read(512)
+            if len(header) < 262:
+                return False
+            
+            # Check for tar magic number at offset 257
+            tar_magic = header[257:265]
+            return tar_magic.startswith(b'ustar\x00') or tar_magic.startswith(b'ustar ')
+    except Exception as e:
+        _logger.debug(f"Failed to check tar inside xz: {e}")
+        return False
+
+
 def _get_file_extension_from_content_type(content_type: str) -> str:
     """
     Get file extension from Content-Type header
+    Note: This function cannot detect compound formats like .tar.gz, .tar.xz, .tar.bz2
+    as Content-Type headers typically only indicate the outer compression format.
     """
     if not content_type:
         return ""
@@ -173,7 +238,10 @@ def download_dataset_from_url(url: str, save_dir: str = ".") -> str:
 
 def _handle_existing_file(file_path: str, save_dir: str) -> str:
     """Handle existing file - check if it's compressed and extract if needed."""
-    return _extract_if_compressed(file_path, save_dir)
+    if os.path.isdir(file_path):
+        return file_path
+    else:
+        return _extract_if_compressed(file_path, save_dir)
 
 
 def _handle_downloaded_file(file_path: str, save_dir: str) -> str:
@@ -202,6 +270,7 @@ def _extract_if_compressed(file_path: str, save_dir: str) -> str:
         with zipfile.ZipFile(file_path, 'r') as zip_ref:
             zip_ref.extractall(extract_dir)
         _logger.info(f"extracted dataset to {extract_dir}")
+        os.remove(file_path)
         return extract_dir
     
     # Check if it's a tar file (including .tar.gz, .tar.bz2, etc.)
@@ -222,7 +291,77 @@ def _extract_if_compressed(file_path: str, save_dir: str) -> str:
         with tarfile.open(file_path, mode) as tar_ref:
             tar_ref.extractall(extract_dir)
         _logger.info(f"extracted dataset to {extract_dir}")
+        os.remove(file_path)
         return extract_dir
+    
+    # Check if it's a gzip file (not tar.gz)
+    elif filename.lower().endswith('.gz'):
+        if os.path.exists(extract_dir):
+            _logger.info(f"extracted dataset already exists at {extract_dir}")
+            return extract_dir
+        
+        _logger.info(f"extracting gzip file {file_path} to {extract_dir}")
+        import gzip
+        import shutil
+        
+        # Create extract directory if it doesn't exist
+        os.makedirs(extract_dir, exist_ok=True)
+        
+        # Extract the gzip file to the extract directory
+        extracted_file_path = os.path.join(extract_dir, name_without_ext)
+        with gzip.open(file_path, 'rb') as gz_file:
+            with open(extracted_file_path, 'wb') as out_file:
+                shutil.copyfileobj(gz_file, out_file)
+        
+        _logger.info(f"extracted dataset to {extracted_file_path}")
+        os.remove(file_path)
+        return extracted_file_path
+    
+    # Check if it's a bzip2 file (not tar.bz2)
+    elif filename.lower().endswith('.bz2'):
+        if os.path.exists(extract_dir):
+            _logger.info(f"extracted dataset already exists at {extract_dir}")
+            return extract_dir
+        
+        _logger.info(f"extracting bzip2 file {file_path} to {extract_dir}")
+        import bz2
+        import shutil
+        
+        # Create extract directory if it doesn't exist
+        os.makedirs(extract_dir, exist_ok=True)
+        
+        # Extract the bzip2 file to the extract directory
+        extracted_file_path = os.path.join(extract_dir, name_without_ext)
+        with bz2.open(file_path, 'rb') as bz_file:
+            with open(extracted_file_path, 'wb') as out_file:
+                shutil.copyfileobj(bz_file, out_file)
+        
+        _logger.info(f"extracted dataset to {extracted_file_path}")
+        os.remove(file_path)
+        return extracted_file_path
+    
+    # Check if it's an xz file (not tar.xz)
+    elif filename.lower().endswith('.xz'):
+        if os.path.exists(extract_dir):
+            _logger.info(f"extracted dataset already exists at {extract_dir}")
+            return extract_dir
+        
+        _logger.info(f"extracting xz file {file_path} to {extract_dir}")
+        import lzma
+        import shutil
+        
+        # Create extract directory if it doesn't exist
+        os.makedirs(extract_dir, exist_ok=True)
+        
+        # Extract the xz file to the extract directory
+        extracted_file_path = os.path.join(extract_dir, name_without_ext)
+        with lzma.open(file_path, 'rb') as xz_file:
+            with open(extracted_file_path, 'wb') as out_file:
+                shutil.copyfileobj(xz_file, out_file)
+        
+        _logger.info(f"extracted dataset to {extracted_file_path}")
+        os.remove(file_path)
+        return extracted_file_path
     
     # If filename has no extension, try to detect file type by magic number
     elif "." not in filename:

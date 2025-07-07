@@ -214,6 +214,7 @@ def run_finetune_lora_task(
         url = str(args.dataset.url)
         dirname = hashlib.md5(url.encode("utf-8")).hexdigest()
         dataset_dir = os.path.join(cache_dir, dirname)
+        os.makedirs(dataset_dir, exist_ok=True)
         dataset_path = download_dataset_from_url(url, dataset_dir)
         dataset = load_dataset(dataset_path, args.dataset.config_name)
         dataset = cast(DatasetDict, dataset)
