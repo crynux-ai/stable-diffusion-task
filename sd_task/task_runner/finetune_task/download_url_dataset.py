@@ -192,6 +192,8 @@ def download_dataset_from_url(url: str, save_dir: str = ".") -> str:
         total_size = int(response.headers.get("content-length", 0))
 
         downloaded = 0
+        log_progress_point = 0
+        log_downloaded_point = 0
         with open(tmp_file_path, "wb") as f:
             for chunk in response.iter_content(chunk_size=8192):
                 if chunk:
@@ -199,13 +201,17 @@ def download_dataset_from_url(url: str, save_dir: str = ".") -> str:
                     downloaded += len(chunk)
                     if total_size > 0:
                         progress = (downloaded / total_size) * 100
-                        _logger.info(
-                            f"downloading dataset to {file_path} {downloaded / 1024} kb {progress:.1f}%"
-                        )
+                        if progress - log_progress_point >= 1:
+                            _logger.info(
+                                f"downloading dataset to {file_path} {downloaded / (1024*1024):.1f} MB {progress:.1f}%"
+                            )
+                            log_progress_point = progress
                     else:
-                        _logger.info(
-                            f"downloading dataset to {file_path} {downloaded / 1024} kb"
-                        )
+                        if downloaded - log_downloaded_point >= 10 * 1024 * 1024:
+                            _logger.info(
+                                f"downloading dataset to {file_path} {downloaded / (1024*1024):.1f} MB"
+                            )
+                            log_downloaded_point = downloaded
 
         # After download, check file type and add appropriate extension
         if "." not in filename:
